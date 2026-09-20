@@ -146,10 +146,10 @@ class MainWindow(QMainWindow):
         help_text.setObjectName("AppHelp")
         top_layout.addWidget(help_text)
 
-        # Quick Theme Switcher Button on the bar
-        self.theme_btn = QPushButton("🌙 Dark Mode")
+        # Quick Theme Switcher Button on the bar (reflects current theme)
+        self.theme_btn = QPushButton("☀️ Light Mode")
         self.theme_btn.setObjectName("ThemeToggleBtn")
-        self.theme_btn.setToolTip("Quick switch between Light and Dark themes")
+        self.theme_btn.setToolTip("Click to toggle between Light and Dark themes")
         self.theme_btn.clicked.connect(self._toggle_quick_theme)
         top_layout.addWidget(self.theme_btn)
 
@@ -223,12 +223,14 @@ class MainWindow(QMainWindow):
         if hasattr(self, "canvas_widget"):
             self.canvas_widget.set_theme(self.current_theme)
 
-        # Update top bar button label
+        # Update top bar button label to match active theme
         if hasattr(self, "theme_btn"):
             if self.current_theme == "light":
-                self.theme_btn.setText("🌙 Dark Mode")
-            else:
                 self.theme_btn.setText("☀️ Light Mode")
+                self.theme_btn.setToolTip("Currently in Light Mode. Click to switch to Dark Mode.")
+            else:
+                self.theme_btn.setText("🌙 Dark Mode")
+                self.theme_btn.setToolTip("Currently in Dark Mode. Click to switch to Light Mode.")
 
         # Sync menu check states
         if hasattr(self, "light_theme_action") and hasattr(self, "dark_theme_action"):
