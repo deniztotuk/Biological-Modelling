@@ -198,22 +198,34 @@ class ParameterPanel(QWidget):
         self.n2_init_spin.setSingleStep(1.0)
         sim_layout.addWidget(self.n2_init_spin, 1, 1)
 
-        # Time Span
-        time_label = "End Time (t_max):" if self.mode == "continuous" else "Number of Steps (t):"
-        sim_layout.addWidget(QLabel(time_label), 2, 0)
-        self.t_max_spin = QDoubleSpinBox()
-        self.t_max_spin.setRange(5.0, 1000.0)
-        self.t_max_spin.setValue(50.0)
-        self.t_max_spin.setSingleStep(5.0)
-        sim_layout.addWidget(self.t_max_spin, 2, 1)
+        # Initial Time (t_start / t0)
+        start_label = "Start Time (t₀ / t_start):" if self.mode == "continuous" else "Start Step (t₀):"
+        sim_layout.addWidget(QLabel(start_label), 2, 0)
+        self.t_start_spin = QDoubleSpinBox()
+        self.t_start_spin.setRange(-10000.0, 100000.0)
+        self.t_start_spin.setValue(0.0)
+        self.t_start_spin.setSingleStep(1.0)
+        self.t_start_spin.setToolTip("Initial simulation time point (can start at 0 or any arbitrary value)")
+        self.t_start_spin.valueChanged.connect(self._on_t_start_changed)
+        sim_layout.addWidget(self.t_start_spin, 2, 1)
+
+        # End Time (t_end / t_max)
+        end_label = "End Time (t_end):" if self.mode == "continuous" else "End Step (t_end):"
+        sim_layout.addWidget(QLabel(end_label), 3, 0)
+        self.t_end_spin = QDoubleSpinBox()
+        self.t_end_spin.setRange(-10000.0, 100000.0)
+        self.t_end_spin.setValue(50.0)
+        self.t_end_spin.setSingleStep(5.0)
+        self.t_end_spin.setToolTip("Final simulation time point (must be greater than start time)")
+        sim_layout.addWidget(self.t_end_spin, 3, 1)
 
         # Sampling points
-        sim_layout.addWidget(QLabel("Output Resolution Points:"), 3, 0)
+        sim_layout.addWidget(QLabel("Output Resolution Points:"), 4, 0)
         self.points_spin = QSpinBox()
         self.points_spin.setRange(50, 5000)
         self.points_spin.setValue(500)
         self.points_spin.setSingleStep(50)
-        sim_layout.addWidget(self.points_spin, 3, 1)
+        sim_layout.addWidget(self.points_spin, 4, 1)
 
         self.content_layout.addWidget(sim_group)
 
@@ -258,6 +270,10 @@ class ParameterPanel(QWidget):
         if data:
             self.preset_desc.setText(data.get("description", ""))
 
+    def _on_t_start_changed(self, val: float):
+        if hasattr(self, "t_end_spin") and self.t_end_spin.value() <= val:
+            self.t_end_spin.setValue(val + 10.0)
+
     def _apply_current_preset(self):
         data = self.preset_combo.currentData()
         if not data:
@@ -268,7 +284,9 @@ class ParameterPanel(QWidget):
             self.n2_init_spin.setValue(data["initial"][1])
 
         if "t_span" in data:
-            self.t_max_spin.setValue(data["t_span"][1])
+            t_span = data["t_span"]
+            self.t_start_spin.setValue(float(t_span[0]))
+            self.t_end_spin.setValue(float(t_span[1]))
 
         params = data.get("params", {})
         for k, v in params.items():
@@ -308,7 +326,7 @@ class ParameterPanel(QWidget):
             "model": self.model,
             "mode": self.mode,
             "initial_state": (self.n1_init_spin.value(), self.n2_init_spin.value()),
-            "t_span": (0.0, self.t_max_spin.value()),
+            "t_span": (self.t_start_spin.value(), self.t_end_spin.value()),
             "num_points": self.points_spin.value(),
             "params": params,
         }

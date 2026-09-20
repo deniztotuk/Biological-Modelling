@@ -172,7 +172,7 @@ class BioPlotCanvas(QWidget):
         time_unit = "Time Steps (discrete)" if result.metadata.get("mode") == "discrete" else "Time (t)"
         self.ax_time.set_xlabel(time_unit, fontsize=10, fontweight="600", color=colors["subtext_color"])
         self.ax_time.set_ylabel("Population Density / Abundance", fontsize=10, fontweight="600", color=colors["subtext_color"])
-        self.ax_time.set_xlim(left=0, right=t[-1])
+        self.ax_time.set_xlim(left=t[0], right=t[-1])
         self.ax_time.set_ylim(bottom=0, top=max(1.0, max(np.max(n1), np.max(n2)) * 1.15))
         self.ax_time.grid(True, linestyle="--", alpha=0.5, color=colors["grid"])
 

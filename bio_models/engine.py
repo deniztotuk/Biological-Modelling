@@ -31,13 +31,18 @@ def simulate_model(
 
     start_time = time.perf_counter()
 
-    t_eval = np.linspace(t_span[0], t_span[1], num_points)
+    t_start, t_end = float(t_span[0]), float(t_span[1])
+    if t_end <= t_start:
+        t_end = t_start + 10.0
+    valid_t_span = (t_start, t_end)
+
+    t_eval = np.linspace(t_start, t_end, num_points)
     n1_init, n2_init = max(0.0, float(initial_state[0])), max(0.0, float(initial_state[1]))
 
     if mode == "discrete":
         # Discrete iteration step by step
         steps = num_points
-        t_arr = np.arange(steps)
+        t_arr = np.linspace(t_start, t_end, steps)
         n1_arr = np.zeros(steps)
         n2_arr = np.zeros(steps)
         curr = np.array([n1_init, n2_init], dtype=float)
@@ -83,7 +88,7 @@ def simulate_model(
     try:
         sol = solve_ivp(
             fun=ode_system,
-            t_span=t_span,
+            t_span=valid_t_span,
             y0=[n1_init, n2_init],
             t_eval=t_eval,
             method=ode_method,
@@ -95,7 +100,7 @@ def simulate_model(
         if not sol.success and ode_method != "LSODA":
             sol = solve_ivp(
                 fun=ode_system,
-                t_span=t_span,
+                t_span=valid_t_span,
                 y0=[n1_init, n2_init],
                 t_eval=t_eval,
                 method="LSODA",

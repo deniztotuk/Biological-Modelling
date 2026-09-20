@@ -42,6 +42,36 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(res.n1[-1], 0)
         self.assertGreater(res.n2[-1], 0)
 
+    def test_arbitrary_initial_and_end_time(self):
+        """Verify models can start at arbitrary t_start != 0 and terminate at t_end."""
+        model = LotkaVolterraCompetitionModel()
+        params = model.default_params
+
+        # 1. Positive non-zero start time
+        res = simulate_model(model, initial_state=(20.0, 15.0), t_span=(15.0, 75.0), num_points=100, params=params)
+        self.assertTrue(res.success)
+        self.assertAlmostEqual(res.t[0], 15.0, places=5)
+        self.assertAlmostEqual(res.t[-1], 75.0, places=5)
+        self.assertEqual(len(res.t), 100)
+
+        # 2. Negative start time
+        res_neg = simulate_model(model, initial_state=(20.0, 15.0), t_span=(-10.0, 30.0), num_points=100, params=params)
+        self.assertTrue(res_neg.success)
+        self.assertAlmostEqual(res_neg.t[0], -10.0, places=5)
+        self.assertAlmostEqual(res_neg.t[-1], 30.0, places=5)
+
+        # 3. Discrete recurrence with arbitrary time span
+        res_disc = simulate_model(model, initial_state=(20.0, 15.0), t_span=(10.0, 50.0), num_points=40, params=params, mode="discrete")
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.t[0], 10.0, places=5)
+        self.assertAlmostEqual(res_disc.t[-1], 50.0, places=5)
+
+        # 4. Inverted/invalid time span fallback (t_end <= t_start)
+        res_fallback = simulate_model(model, initial_state=(20.0, 15.0), t_span=(50.0, 20.0), num_points=50, params=params)
+        self.assertTrue(res_fallback.success)
+        self.assertAlmostEqual(res_fallback.t[0], 50.0, places=5)
+        self.assertGreater(res_fallback.t[-1], res_fallback.t[0])
+
     def test_competition_discrete_recursion(self):
         model = LotkaVolterraCompetitionModel()
         params = model.default_params
@@ -202,6 +232,31 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(window.current_theme, "light")
         self.assertTrue(window.light_theme_action.isChecked())
         self.assertEqual(window.canvas_widget.theme, "light")
+
+        window.close()
+
+    def test_gui_time_span_controls(self):
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        # Set custom start time and end time
+        window.param_panel.t_start_spin.setValue(12.5)
+        window.param_panel.t_end_spin.setValue(82.5)
+
+        inputs = window.param_panel.get_simulation_inputs()
+        self.assertEqual(inputs["t_span"], (12.5, 82.5))
+
+        # Run simulation and check result t bounds
+        window.run_simulation()
+        res = window.canvas_widget._current_result
+        self.assertIsNotNone(res)
+        self.assertTrue(res.success)
+        self.assertAlmostEqual(res.t[0], 12.5, places=5)
+        self.assertAlmostEqual(res.t[-1], 82.5, places=5)
+
+        # Test automatic adjustment when t_start exceeds t_end
+        window.param_panel.t_start_spin.setValue(100.0)
+        self.assertGreater(window.param_panel.t_end_spin.value(), 100.0)
 
         window.close()
 

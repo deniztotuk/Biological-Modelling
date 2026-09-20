@@ -36,6 +36,31 @@ def test_competition_continuous_simulation():
     assert res.n2[-1] > 0
 
 
+def test_arbitrary_initial_and_end_time():
+    """Verify models can start at arbitrary t_start != 0 and terminate at t_end."""
+    model = LotkaVolterraCompetitionModel()
+    params = model.default_params
+
+    # Positive non-zero start time
+    res = simulate_model(model, initial_state=(20.0, 15.0), t_span=(15.0, 75.0), num_points=100, params=params)
+    assert res.success is True
+    assert np.isclose(res.t[0], 15.0)
+    assert np.isclose(res.t[-1], 75.0)
+    assert len(res.t) == 100
+
+    # Negative start time
+    res_neg = simulate_model(model, initial_state=(20.0, 15.0), t_span=(-10.0, 30.0), num_points=100, params=params)
+    assert res_neg.success is True
+    assert np.isclose(res_neg.t[0], -10.0)
+    assert np.isclose(res_neg.t[-1], 30.0)
+
+    # Discrete recurrence
+    res_disc = simulate_model(model, initial_state=(20.0, 15.0), t_span=(10.0, 50.0), num_points=40, params=params, mode="discrete")
+    assert res_disc.success is True
+    assert np.isclose(res_disc.t[0], 10.0)
+    assert np.isclose(res_disc.t[-1], 50.0)
+
+
 def test_competition_discrete_recursion():
     model = LotkaVolterraCompetitionModel()
     params = model.default_params
