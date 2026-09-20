@@ -21,19 +21,29 @@ from bio_models.models import BiologicalModel, AVAILABLE_MODELS
 class SandwichDrawer(QFrame):
     """
     Collapsible side drawer navigation menu ('Sandwich menu').
+    Dynamically sizes to fit full model names in normal and fullscreen resolutions,
+    while gracefully compressing and enabling horizontal scrolling in small window resolutions.
     """
 
     model_selected = pyqtSignal(BiologicalModel, str)  # (model, mode: 'continuous' or 'discrete')
 
+    DEFAULT_EXPANDED_WIDTH = 360
+    MIN_EXPANDED_WIDTH = 260
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("SandwichDrawer")
-        self.setFixedWidth(270)
         self._is_collapsed = False
         self._buttons: List[Tuple[QPushButton, BiologicalModel, str]] = []
         self._active_button: QPushButton = None
 
+        self._optimal_expanded_width = self.DEFAULT_EXPANDED_WIDTH
+        self._min_expanded_width = self.MIN_EXPANDED_WIDTH
+        self._expanded_width = self.DEFAULT_EXPANDED_WIDTH
+
         self._init_ui()
+        self._calculate_optimal_width()
+        self.setFixedWidth(self._expanded_width)
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
@@ -60,10 +70,13 @@ class SandwichDrawer(QFrame):
         layout.addWidget(header_widget)
 
         # Scrollable list of models
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("background-color: transparent;")
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setObjectName("DrawerScrollArea")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setStyleSheet("background-color: transparent;")
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         scroll_content = QWidget()
         content_layout = QVBoxLayout(scroll_content)
@@ -97,13 +110,55 @@ class SandwichDrawer(QFrame):
                     self._buttons.append((disc_btn, model, "discrete"))
 
         content_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        layout.addWidget(scroll)
+        self.scroll_area.setWidget(scroll_content)
+        layout.addWidget(self.scroll_area)
 
         # Initial selection
         if self._buttons:
             first_btn, first_model, first_mode = self._buttons[0]
             self._set_active_button(first_btn)
+
+    def _calculate_optimal_width(self):
+        """Calculate optimal width to fit all model names without any horizontal scrollbar."""
+        max_btn_w = 0
+        for btn, _, _ in self._buttons:
+            fm = btn.fontMetrics()
+            btn_w = fm.horizontalAdvance(btn.text()) + 36  # padding (16 left + 16 right) + left indicator
+            if btn_w > max_btn_w:
+                max_btn_w = btn_w
+
+        for cat_lbl in self.findChildren(QLabel):
+            if cat_lbl.objectName() == "DrawerCategory":
+                fm = cat_lbl.fontMetrics()
+                cat_w = fm.horizontalAdvance(cat_lbl.text()) + 32
+                if cat_w > max_btn_w:
+                    max_btn_w = cat_w
+
+        # Ensure clearance for vertical scrollbar (16-20px) and margins
+        self._optimal_expanded_width = max(max_btn_w + 24, self.DEFAULT_EXPANDED_WIDTH)
+        self._expanded_width = self._optimal_expanded_width
+
+    def adapt_to_window_width(self, window_width: int):
+        """
+        Dynamically adapt drawer width:
+        - At default (1340px) or fullscreen/high resolutions: comfortably sized
+          at optimal_expanded_width so the horizontal scrollbar disappears.
+        - At smaller window widths (<1300px down to minimum 950px): gracefully shrinks
+          down to min_expanded_width, allowing the horizontal scrollbar to appear as needed.
+        """
+        if window_width >= 1300:
+            target_w = self._optimal_expanded_width
+        else:
+            ratio = max(0.0, min(1.0, (window_width - 950) / 350.0))
+            target_w = int(self._min_expanded_width + (self._optimal_expanded_width - self._min_expanded_width) * ratio)
+
+        self._expanded_width = target_w
+        if not self._is_collapsed:
+            if hasattr(self, "anim") and self.anim.state() == QPropertyAnimation.State.Running:
+                self.anim.stop()
+            if hasattr(self, "anim_min") and self.anim_min.state() == QPropertyAnimation.State.Running:
+                self.anim_min.stop()
+            self.setFixedWidth(target_w)
 
     def _handle_selection(self, model: BiologicalModel, mode: str):
         # Update styling on buttons
@@ -125,9 +180,9 @@ class SandwichDrawer(QFrame):
         btn.style().polish(btn)
 
     def toggle_collapse(self):
-        """Toggle side drawer width between 0 and 270."""
+        """Toggle side drawer width between 0 and active expanded width."""
         self._is_collapsed = not self._is_collapsed
-        target_width = 0 if self._is_collapsed else 270
+        target_width = 0 if self._is_collapsed else self._expanded_width
 
         self.anim = QPropertyAnimation(self, b"maximumWidth")
         self.anim.setDuration(200)
@@ -146,3 +201,15 @@ class SandwichDrawer(QFrame):
     @property
     def is_collapsed(self) -> bool:
         return self._is_collapsed
+
+    @property
+    def expanded_width(self) -> int:
+        return self._expanded_width
+
+    @property
+    def optimal_expanded_width(self) -> int:
+        return self._optimal_expanded_width
+
+    @property
+    def min_expanded_width(self) -> int:
+        return self._min_expanded_width

@@ -370,7 +370,53 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_drawer_responsive_width_and_scrollbar(self):
+        """
+        Verify that in default (1340px) and fullscreen (1920px) resolutions the drawer
+        dynamically sizes to fit full model names and the horizontal scrollbar disappears;
+        whereas in small window resolutions (950px), the drawer compresses and the
+        horizontal scrollbar appears so the user can scroll across the menu.
+        """
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        window.resize(1340, 820)
+        window.show()
+        QApplication.processEvents()
+
+        # 1. Default resolution (1340x820)
+        self.assertGreaterEqual(window.drawer.width(), 350)
+        self.assertEqual(window.drawer.width(), window.drawer.optimal_expanded_width)
+        hbar = window.drawer.scroll_area.horizontalScrollBar()
+        self.assertFalse(hbar.isVisible())
+        self.assertEqual(hbar.maximum(), 0)
+
+        # 2. Fullscreen / wide resolution (1920x1080)
+        window.resize(1920, 1080)
+        QApplication.processEvents()
+        self.assertEqual(window.drawer.width(), window.drawer.optimal_expanded_width)
+        self.assertFalse(hbar.isVisible())
+        self.assertEqual(hbar.maximum(), 0)
+
+        # 3. Small / compressed resolution (950x600)
+        window.resize(950, 600)
+        QApplication.processEvents()
+        self.assertEqual(window.drawer.width(), window.drawer.min_expanded_width)
+        self.assertTrue(hbar.isVisible())
+        self.assertGreater(hbar.maximum(), 0)
+
+        # 4. Resize back to default (1340x820)
+        window.resize(1340, 820)
+        QApplication.processEvents()
+        self.assertEqual(window.drawer.width(), window.drawer.optimal_expanded_width)
+        self.assertFalse(hbar.isVisible())
+        self.assertEqual(hbar.maximum(), 0)
+
+        window.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
 

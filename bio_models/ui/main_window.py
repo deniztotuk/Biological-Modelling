@@ -163,9 +163,10 @@ class MainWindow(QMainWindow):
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
 
-        # Sandwich Navigation Drawer (Collapsible)
+        # Sandwich Navigation Drawer (Collapsible & Responsive)
         self.drawer = SandwichDrawer()
         self.drawer.model_selected.connect(self._on_model_selected)
+        self.drawer.adapt_to_window_width(self.width())
         body_layout.addWidget(self.drawer)
 
         # Splitter between Parameter Panel and Canvas
@@ -286,3 +287,8 @@ class MainWindow(QMainWindow):
 
     def _on_export_completed(self, path: str):
         self.status_bar.showMessage(f"Graph successfully exported to JPEG: {path}", 6000)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "drawer") and not self.drawer.is_collapsed:
+            self.drawer.adapt_to_window_width(self.width())

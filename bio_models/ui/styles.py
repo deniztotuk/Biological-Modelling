@@ -370,6 +370,63 @@ QMenu::item:selected {
     background-color: #eff6ff;
     color: #2563eb;
 }
+
+/* Modern ScrollBars (Horizontal & Vertical) */
+QScrollBar:horizontal {
+    background-color: transparent;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #cbd5e1;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #94a3b8;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    height: 0px;
+    border: none;
+    background: none;
+}
+
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #cbd5e1;
+    min-height: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #94a3b8;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    width: 0px;
+    height: 0px;
+    border: none;
+    background: none;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
 """
 
 DARK_STYLESHEET = """
@@ -737,6 +794,63 @@ QMenu {
 QMenu::item:selected {
     background-color: #1e293b;
     color: #38bdf8;
+}
+
+/* Modern ScrollBars (Horizontal & Vertical) */
+QScrollBar:horizontal {
+    background-color: transparent;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #334155;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #475569;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    height: 0px;
+    border: none;
+    background: none;
+}
+
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #334155;
+    min-height: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #475569;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    width: 0px;
+    height: 0px;
+    border: none;
+    background: none;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
 }
 """
 
