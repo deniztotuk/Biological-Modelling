@@ -8,6 +8,11 @@ The application models **Lotka-Volterra Competition & Multi-Species Interactions
 
 ## Key Features
 
+- **Light & Dark Themes + Top Settings Menu:**
+  - Designed with a clean **Light Theme by default**, with full support for **Dark Theme**.
+  - Accessible via macOS top menu bar: **`Settings` $\to$ `Theme` $\to$ `Light Theme` / `Dark Theme`**.
+  - Quick **`☀️ Light Mode` / `🌙 Dark Mode`** toggle button directly on the window header.
+  - Automatically adapts the Matplotlib plotting canvas, backgrounds, axis labels, grids, and exported JPEG files.
 - **Sandwich / Hamburger Navigation Drawer (☰):**
   - Smooth collapsible sidebar to switch between competition and consumer-resource models.
 - **Dynamic Parameter & Scenario Panel:**

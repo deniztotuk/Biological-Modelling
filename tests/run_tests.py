@@ -181,6 +181,30 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_theme_switching(self):
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow(default_theme="light")
+        self.assertEqual(window.current_theme, "light")
+        self.assertTrue(window.light_theme_action.isChecked())
+        self.assertFalse(window.dark_theme_action.isChecked())
+        self.assertEqual(window.canvas_widget.theme, "light")
+
+        # Switch to dark theme
+        window.apply_theme("dark")
+        self.assertEqual(window.current_theme, "dark")
+        self.assertTrue(window.dark_theme_action.isChecked())
+        self.assertFalse(window.light_theme_action.isChecked())
+        self.assertEqual(window.canvas_widget.theme, "dark")
+
+        # Toggle back to light theme via quick button
+        window._toggle_quick_theme()
+        self.assertEqual(window.current_theme, "light")
+        self.assertTrue(window.light_theme_action.isChecked())
+        self.assertEqual(window.canvas_widget.theme, "light")
+
+        window.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

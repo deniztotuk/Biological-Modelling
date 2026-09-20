@@ -51,22 +51,9 @@ class SandwichDrawer(QFrame):
         header_layout.addStretch()
 
         close_btn = QPushButton("✕")
+        close_btn.setObjectName("DrawerCloseBtn")
         close_btn.setFixedSize(28, 28)
         close_btn.setToolTip("Close menu")
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #94a3b8;
-                border: none;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                color: #ffffff;
-                background-color: #334155;
-                border-radius: 4px;
-            }
-        """)
         close_btn.clicked.connect(self.toggle_collapse)
         header_layout.addWidget(close_btn)
 
