@@ -137,6 +137,34 @@ QWidget#ParamScrollContent {
     background-color: #ffffff;
 }
 
+/* Universal and GroupBox Label Styling */
+QLabel {
+    color: #0f172a;
+}
+
+QGroupBox QLabel {
+    color: #0f172a;
+}
+
+QScrollArea#ParamScrollArea QLabel {
+    color: #0f172a;
+}
+
+QWidget#ParamScrollContent QLabel {
+    color: #0f172a;
+}
+
+QLabel#CanvasInfoLabel {
+    color: #334155;
+    font-size: 12px;
+}
+
+QLabel#PresetDescLabel {
+    color: #475569;
+    font-size: 11px;
+    font-style: italic;
+}
+
 QGroupBox {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
@@ -152,6 +180,7 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 4px;
+    color: #0f172a;
 }
 
 QLabel#ModelTitle {
@@ -406,6 +435,34 @@ QWidget#ParamScrollContent {
     background-color: #1e293b;
 }
 
+/* Universal and GroupBox Label Styling */
+QLabel {
+    color: #f8fafc;
+}
+
+QGroupBox QLabel {
+    color: #f8fafc;
+}
+
+QScrollArea#ParamScrollArea QLabel {
+    color: #f8fafc;
+}
+
+QWidget#ParamScrollContent QLabel {
+    color: #f8fafc;
+}
+
+QLabel#CanvasInfoLabel {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+QLabel#PresetDescLabel {
+    color: #94a3b8;
+    font-size: 11px;
+    font-style: italic;
+}
+
 QGroupBox {
     background-color: #1e293b;
     border: 1px solid #334155;
@@ -421,6 +478,7 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 4px;
+    color: #f8fafc;
 }
 
 QLabel#ModelTitle {

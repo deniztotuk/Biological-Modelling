@@ -114,7 +114,7 @@ class ParameterPanel(QWidget):
         # 2. Presets Selector
         model_presets = PRESETS.get(self.model.name, [])
         if model_presets:
-            preset_group = QGroupBox("Biological Scenarios & Presets")
+            preset_group = QGroupBox("Biological Scenarios && Presets")
             preset_layout = QVBoxLayout(preset_group)
             preset_layout.setSpacing(6)
 
@@ -123,8 +123,8 @@ class ParameterPanel(QWidget):
                 self.preset_combo.addItem(p["name"], p)
 
             self.preset_desc = QLabel(model_presets[0]["description"])
+            self.preset_desc.setObjectName("PresetDescLabel")
             self.preset_desc.setWordWrap(True)
-            self.preset_desc.setStyleSheet("color: #64748b; font-size: 11px; font-style: italic;")
 
             self.preset_combo.currentIndexChanged.connect(self._on_preset_changed)
 
@@ -178,7 +178,7 @@ class ParameterPanel(QWidget):
             self.content_layout.addWidget(mod_group)
 
         # 4. Initial Conditions & Simulation Settings
-        sim_group = QGroupBox("Initial Conditions & Time Span")
+        sim_group = QGroupBox("Initial Conditions && Time Span")
         sim_layout = QGridLayout(sim_group)
         sim_layout.setSpacing(8)
 

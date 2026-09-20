@@ -168,7 +168,7 @@ class BioPlotCanvas(QWidget):
         self.ax_time.fill_between(t, n1, color=c1, alpha=0.10)
         self.ax_time.fill_between(t, n2, color=c2, alpha=0.10)
 
-        self.ax_time.set_title(f"Population Over Time\n({result.model_name})", fontsize=11, fontweight="bold", color=colors["text_color"], pad=8)
+        self.ax_time.set_title("Population Dynamics (Time Series)", fontsize=11, fontweight="bold", color=colors["text_color"], pad=10)
         time_unit = "Time Steps (discrete)" if result.metadata.get("mode") == "discrete" else "Time (t)"
         self.ax_time.set_xlabel(time_unit, fontsize=10, fontweight="600", color=colors["subtext_color"])
         self.ax_time.set_ylabel("Population Density / Abundance", fontsize=10, fontweight="600", color=colors["subtext_color"])
@@ -239,7 +239,7 @@ class BioPlotCanvas(QWidget):
             else:
                 self.ax_phase.plot(iso_x, iso_y, linestyle="--", color=colors["isocline2"], alpha=0.8, linewidth=1.4, label=name)
 
-        self.ax_phase.set_title("Phase Space: Consumer/Predator vs Resource/Prey", fontsize=11, fontweight="bold", color=colors["text_color"], pad=8)
+        self.ax_phase.set_title("Phase Portrait (State Space)", fontsize=11, fontweight="bold", color=colors["text_color"], pad=10)
         self.ax_phase.set_xlabel(result.n1_label, fontsize=10, fontweight="600", color=colors["subtext_color"])
         self.ax_phase.set_ylabel(result.n2_label, fontsize=10, fontweight="600", color=colors["subtext_color"])
         self.ax_phase.set_xlim(left=0, right=max_n1)
@@ -256,7 +256,7 @@ class BioPlotCanvas(QWidget):
         for text in leg_phase.get_texts():
             text.set_color(colors["text_color"])
 
-        self.figure.tight_layout(pad=2.8)
+        self.figure.tight_layout(pad=2.8, w_pad=3.5)
         self.canvas.draw()
 
         self.info_lbl.setText(f"{result.message} | Final: n₁={n1[-1]:.2f}, n₂={n2[-1]:.2f}")
