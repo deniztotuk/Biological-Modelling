@@ -343,6 +343,34 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_combobox_view_and_theme_palette(self):
+        """Verify combobox view is a QListView and palette colors match light and dark themes."""
+        from PyQt6.QtGui import QPalette
+        from PyQt6.QtWidgets import QListView
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow(default_theme="light")
+        preset_combo = window.param_panel.preset_combo
+
+        # Verify QListView is used (bypasses Cocoa native popup)
+        self.assertIsInstance(preset_combo.view(), QListView)
+
+        # Light theme combobox view palette checks
+        base_color = preset_combo.view().palette().color(QPalette.ColorRole.Base).name().lower()
+        text_color = preset_combo.view().palette().color(QPalette.ColorRole.Text).name().lower()
+        self.assertEqual(base_color, "#ffffff")
+        self.assertEqual(text_color, "#0f172a")
+
+        # Switch to dark theme
+        window.apply_theme("dark")
+        base_color_dark = preset_combo.view().palette().color(QPalette.ColorRole.Base).name().lower()
+        text_color_dark = preset_combo.view().palette().color(QPalette.ColorRole.Text).name().lower()
+        self.assertEqual(base_color_dark, "#1e293b")
+        self.assertEqual(text_color_dark, "#f8fafc")
+
+        window.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

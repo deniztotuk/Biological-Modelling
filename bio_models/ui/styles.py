@@ -2,6 +2,8 @@
 Desktop application styling, themes (Light and Dark), and plotting color palettes.
 """
 
+from PyQt6.QtGui import QPalette, QColor
+
 LIGHT_STYLESHEET = """
 QMainWindow {
     background-color: #f8fafc;
@@ -209,7 +211,7 @@ QLabel#RelationshipBadge {
 }
 
 /* Inputs & SpinBoxes */
-QDoubleSpinBox, QSpinBox, QComboBox {
+QDoubleSpinBox, QSpinBox {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 5px;
@@ -219,8 +221,78 @@ QDoubleSpinBox, QSpinBox, QComboBox {
     min-height: 22px;
 }
 
-QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus {
+QDoubleSpinBox:focus, QSpinBox:focus {
     border: 1.5px solid #2563eb;
+}
+
+/* QComboBox & Dropdown Popup (Light Theme) */
+QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #0f172a;
+    min-height: 24px;
+}
+
+QComboBox:hover {
+    border: 1px solid #94a3b8;
+    background-color: #f8fafc;
+}
+
+QComboBox:focus {
+    border: 1.5px solid #2563eb;
+    background-color: #ffffff;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 26px;
+    border-left: 1px solid #cbd5e1;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: #f1f5f9;
+}
+
+QComboBox::down-arrow {
+    width: 0px;
+    height: 0px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #334155;
+    margin-right: 2px;
+}
+
+QComboBox QAbstractItemView, QComboBox QListView {
+    background-color: #ffffff;
+    color: #0f172a;
+    selection-background-color: #e0f2fe;
+    selection-color: #0369a1;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item, QComboBox QListView::item {
+    background-color: #ffffff;
+    color: #0f172a;
+    padding: 8px 12px;
+    min-height: 26px;
+    border-radius: 4px;
+}
+
+QComboBox QAbstractItemView::item:hover, QComboBox QListView::item:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    font-weight: 700;
 }
 
 /* Action Buttons */
@@ -507,7 +579,7 @@ QLabel#RelationshipBadge {
 }
 
 /* Inputs & SpinBoxes */
-QDoubleSpinBox, QSpinBox, QComboBox {
+QDoubleSpinBox, QSpinBox {
     background-color: #0f172a;
     border: 1px solid #334155;
     border-radius: 5px;
@@ -517,8 +589,78 @@ QDoubleSpinBox, QSpinBox, QComboBox {
     min-height: 22px;
 }
 
-QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus {
+QDoubleSpinBox:focus, QSpinBox:focus {
     border: 1.5px solid #38bdf8;
+}
+
+/* QComboBox & Dropdown Popup (Dark Theme) */
+QComboBox {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #f8fafc;
+    min-height: 24px;
+}
+
+QComboBox:hover {
+    border: 1px solid #475569;
+    background-color: #1e293b;
+}
+
+QComboBox:focus {
+    border: 1.5px solid #38bdf8;
+    background-color: #1e293b;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 26px;
+    border-left: 1px solid #334155;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: #0f172a;
+}
+
+QComboBox::down-arrow {
+    width: 0px;
+    height: 0px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #94a3b8;
+    margin-right: 2px;
+}
+
+QComboBox QAbstractItemView, QComboBox QListView {
+    background-color: #1e293b;
+    color: #f8fafc;
+    selection-background-color: #0369a1;
+    selection-color: #ffffff;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 4px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item, QComboBox QListView::item {
+    background-color: #1e293b;
+    color: #f8fafc;
+    padding: 8px 12px;
+    min-height: 26px;
+    border-radius: 4px;
+}
+
+QComboBox QAbstractItemView::item:hover, QComboBox QListView::item:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
+    background-color: #0284c7;
+    color: #ffffff;
+    font-weight: 700;
 }
 
 /* Action Buttons */
@@ -649,3 +791,41 @@ def get_stylesheet(theme: str = "light") -> str:
 def get_plot_colors(theme: str = "light") -> dict:
     """Return plotting color dictionary for theme ('light' or 'dark')."""
     return DARK_PLOT_COLORS if theme.lower() == "dark" else LIGHT_PLOT_COLORS
+
+
+def get_theme_palette(theme: str = "light") -> QPalette:
+    """
+    Return explicit QPalette matching the theme to prevent OS system dark mode
+    from overriding popup menus and dropdown item views with dark backgrounds.
+    """
+    pal = QPalette()
+    is_dark = theme.lower() == "dark"
+
+    if is_dark:
+        bg = QColor("#0f172a")
+        panel_bg = QColor("#1e293b")
+        fg = QColor("#f8fafc")
+        sub_fg = QColor("#94a3b8")
+        hl = QColor("#0284c7")
+        hl_fg = QColor("#ffffff")
+    else:
+        bg = QColor("#f8fafc")
+        panel_bg = QColor("#ffffff")
+        fg = QColor("#0f172a")
+        sub_fg = QColor("#475569")
+        hl = QColor("#e0f2fe")
+        hl_fg = QColor("#0369a1")
+
+    pal.setColor(QPalette.ColorRole.Window, bg)
+    pal.setColor(QPalette.ColorRole.WindowText, fg)
+    pal.setColor(QPalette.ColorRole.Base, panel_bg)
+    pal.setColor(QPalette.ColorRole.AlternateBase, bg)
+    pal.setColor(QPalette.ColorRole.ToolTipBase, panel_bg)
+    pal.setColor(QPalette.ColorRole.ToolTipText, fg)
+    pal.setColor(QPalette.ColorRole.Text, fg)
+    pal.setColor(QPalette.ColorRole.Button, panel_bg)
+    pal.setColor(QPalette.ColorRole.ButtonText, fg)
+    pal.setColor(QPalette.ColorRole.BrightText, QColor("#ffffff"))
+    pal.setColor(QPalette.ColorRole.Highlight, hl)
+    pal.setColor(QPalette.ColorRole.HighlightedText, hl_fg)
+    return pal

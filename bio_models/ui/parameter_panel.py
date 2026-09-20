@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QComboBox,
+    QListView,
     QDoubleSpinBox,
     QSpinBox,
     QScrollArea,
@@ -137,6 +138,7 @@ class ParameterPanel(QWidget):
             preset_layout.setSpacing(6)
 
             self.preset_combo = QComboBox()
+            self.preset_combo.setView(QListView())
             for p in model_presets:
                 self.preset_combo.addItem(p["name"], p)
 
@@ -163,6 +165,7 @@ class ParameterPanel(QWidget):
 
             mod_layout.addWidget(QLabel("Resource Renewal f(n₁):"), 0, 0)
             self.f_combo = QComboBox()
+            self.f_combo.setView(QListView())
             self.f_combo.addItems([
                 "logistic (r·n₁·(1 - n₁/K))",
                 "constant_inflow (θ)",
@@ -174,6 +177,7 @@ class ParameterPanel(QWidget):
 
             mod_layout.addWidget(QLabel("Consumption Rate g(n₁, n₂):"), 1, 0)
             self.g_combo = QComboBox()
+            self.g_combo.setView(QListView())
             self.g_combo.addItems([
                 "type_2_saturating (Holling II: ac·n₁/(b+n₁)·n₂)",
                 "type_1_linear (Type I: ac·n₁·n₂)",
@@ -183,6 +187,7 @@ class ParameterPanel(QWidget):
 
             mod_layout.addWidget(QLabel("Consumer Mortality h(n₂):"), 2, 0)
             self.h_combo = QComboBox()
+            self.h_combo.setView(QListView())
             self.h_combo.addItems([
                 "density_dependent_death ((δ + γ·n₂)·n₂)",
                 "linear_death (δ·n₂)",

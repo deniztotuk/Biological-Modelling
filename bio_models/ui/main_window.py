@@ -7,6 +7,7 @@ Native Menu Bar with Settings (Theme selection: Light / Dark), and shortcuts.
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QActionGroup
 from PyQt6.QtWidgets import (
+    QApplication,
     QMainWindow,
     QWidget,
     QHBoxLayout,
@@ -24,7 +25,7 @@ from bio_models.engine import simulate_model
 from bio_models.ui.sandwich_menu import SandwichDrawer
 from bio_models.ui.parameter_panel import ParameterPanel
 from bio_models.ui.canvas_widget import BioPlotCanvas
-from bio_models.ui.styles import get_stylesheet
+from bio_models.ui.styles import get_stylesheet, get_theme_palette
 
 
 class MainWindow(QMainWindow):
@@ -217,6 +218,14 @@ class MainWindow(QMainWindow):
         """Apply theme ('light' or 'dark') across the entire application and plot canvas."""
         self.current_theme = theme_name.lower()
         stylesheet = get_stylesheet(self.current_theme)
+        palette = get_theme_palette(self.current_theme)
+
+        app = QApplication.instance()
+        if app:
+            app.setPalette(palette)
+            app.setStyleSheet(stylesheet)
+
+        self.setPalette(palette)
         self.setStyleSheet(stylesheet)
 
         # Update canvas theme
