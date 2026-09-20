@@ -198,7 +198,7 @@ class BioPlotCanvas(QWidget):
             color=colors["start"],
             s=80,
             zorder=5,
-            label=f"Start ({n1[0]:.1f}, {n2[0]:.1f})",
+            label=f"Start ({int(round(n1[0]))}, {int(round(n2[0]))})",
             edgecolors=colors["figure_facecolor"],
             linewidth=1.2,
         )

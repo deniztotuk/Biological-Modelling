@@ -72,6 +72,23 @@ class TestBioModels(unittest.TestCase):
         self.assertAlmostEqual(res_fallback.t[0], 50.0, places=5)
         self.assertGreater(res_fallback.t[-1], res_fallback.t[0])
 
+    def test_positive_integer_initial_conditions(self):
+        """Verify engine enforces positive integers (>= 1) for initial species individuals."""
+        model = LotkaVolterraCompetitionModel()
+        params = model.default_params
+
+        # Floating numbers and negative inputs coerced to positive integers >= 1
+        res = simulate_model(model, initial_state=(25.7, -4.0), t_span=(0.0, 20.0), num_points=50, params=params)
+        self.assertTrue(res.success)
+        self.assertEqual(res.n1[0], 26.0)
+        self.assertEqual(res.n2[0], 1.0)
+
+        # Zero coerced to positive integer >= 1
+        res_zero = simulate_model(model, initial_state=(0.0, 0.0), t_span=(0.0, 20.0), num_points=50, params=params)
+        self.assertTrue(res_zero.success)
+        self.assertEqual(res_zero.n1[0], 1.0)
+        self.assertEqual(res_zero.n2[0], 1.0)
+
     def test_competition_discrete_recursion(self):
         model = LotkaVolterraCompetitionModel()
         params = model.default_params
@@ -257,6 +274,42 @@ class TestGUIComponents(unittest.TestCase):
         # Test automatic adjustment when t_start exceeds t_end
         window.param_panel.t_start_spin.setValue(100.0)
         self.assertGreater(window.param_panel.t_end_spin.value(), 100.0)
+
+        window.close()
+
+    def test_gui_positive_integer_population_spins(self):
+        from PyQt6.QtWidgets import QSpinBox
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        # Check that n1 and n2 inputs are QSpinBox (integer only)
+        self.assertIsInstance(window.param_panel.n1_init_spin, QSpinBox)
+        self.assertIsInstance(window.param_panel.n2_init_spin, QSpinBox)
+
+        # Check positive integer constraints: minimum is 1 (no negatives, no zero)
+        self.assertEqual(window.param_panel.n1_init_spin.minimum(), 1)
+        self.assertEqual(window.param_panel.n2_init_spin.minimum(), 1)
+
+        # Set custom positive integer values
+        window.param_panel.n1_init_spin.setValue(45)
+        window.param_panel.n2_init_spin.setValue(30)
+
+        inputs = window.param_panel.get_simulation_inputs()
+        init_state = inputs["initial_state"]
+        self.assertEqual(init_state, (45, 30))
+        self.assertIsInstance(init_state[0], int)
+        self.assertIsInstance(init_state[1], int)
+
+        # Check integer carrying capacities K1 and K2 in competition model
+        k1_spin = window.param_panel._param_inputs["K1"]
+        self.assertIsInstance(k1_spin, QSpinBox)
+        self.assertGreaterEqual(k1_spin.minimum(), 1)
+
+        window.run_simulation()
+        res = window.canvas_widget._current_result
+        self.assertEqual(res.n1[0], 45.0)
+        self.assertEqual(res.n2[0], 30.0)
 
         window.close()
 

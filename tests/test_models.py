@@ -61,6 +61,17 @@ def test_arbitrary_initial_and_end_time():
     assert np.isclose(res_disc.t[-1], 50.0)
 
 
+def test_positive_integer_initial_conditions():
+    """Verify engine enforces positive integers (>= 1) for initial species individuals."""
+    model = LotkaVolterraCompetitionModel()
+    params = model.default_params
+
+    res = simulate_model(model, initial_state=(25.7, -4.0), t_span=(0.0, 20.0), num_points=50, params=params)
+    assert res.success is True
+    assert res.n1[0] == 26.0
+    assert res.n2[0] == 1.0
+
+
 def test_competition_discrete_recursion():
     model = LotkaVolterraCompetitionModel()
     params = model.default_params

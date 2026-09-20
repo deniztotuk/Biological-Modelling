@@ -47,9 +47,9 @@ def export_sample():
     os.makedirs(output_dir, exist_ok=True)
 
     samples = [
-        ("competition_coexistence_light.jpeg", LotkaVolterraCompetitionModel(), (25.0, 20.0), {"r1": 0.8, "r2": 0.7, "K1": 100.0, "K2": 100.0, "alpha12": 0.45, "alpha21": 0.40}, "light"),
-        ("predator_prey_cycles_light.jpeg", LotkaVolterraPredatorPreyModel(), (30.0, 10.0), {"r": 0.9, "a": 0.05, "c": 0.4, "epsilon": 0.5, "delta": 0.25}, "light"),
-        ("rosenzweig_macarthur_dark.jpeg", RosenzweigMacArthurModel(), (40.0, 15.0), {"r": 1.2, "K": 140.0, "a": 0.8, "c": 0.9, "b": 25.0, "epsilon": 0.45, "delta": 0.22}, "dark"),
+        ("competition_coexistence_light.jpeg", LotkaVolterraCompetitionModel(), (25, 20), {"r1": 0.8, "r2": 0.7, "K1": 100, "K2": 100, "alpha12": 0.45, "alpha21": 0.40}, "light"),
+        ("predator_prey_cycles_light.jpeg", LotkaVolterraPredatorPreyModel(), (30, 10), {"r": 0.9, "a": 0.05, "c": 0.4, "epsilon": 0.5, "delta": 0.25}, "light"),
+        ("rosenzweig_macarthur_dark.jpeg", RosenzweigMacArthurModel(), (40, 15), {"r": 1.2, "K": 140, "a": 0.8, "c": 0.9, "b": 25.0, "epsilon": 0.45, "delta": 0.22}, "dark"),
     ]
 
     print(f"Generating {len(samples)} sample JPEG plots in {output_dir}...")

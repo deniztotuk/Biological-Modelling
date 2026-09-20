@@ -182,20 +182,22 @@ class ParameterPanel(QWidget):
         sim_layout = QGridLayout(sim_group)
         sim_layout.setSpacing(8)
 
-        # Initial n1
+        # Initial n1 (Positive integers only: 1, 2, 3...)
         sim_layout.addWidget(QLabel(f"Initial {self.model.n1_label}:"), 0, 0)
-        self.n1_init_spin = QDoubleSpinBox()
-        self.n1_init_spin.setRange(0.0, 5000.0)
-        self.n1_init_spin.setValue(25.0)
-        self.n1_init_spin.setSingleStep(1.0)
+        self.n1_init_spin = QSpinBox()
+        self.n1_init_spin.setRange(1, 1000000)
+        self.n1_init_spin.setValue(25)
+        self.n1_init_spin.setSingleStep(1)
+        self.n1_init_spin.setToolTip("Initial population count (must be a positive integer ≥ 1)")
         sim_layout.addWidget(self.n1_init_spin, 0, 1)
 
-        # Initial n2
+        # Initial n2 (Positive integers only: 1, 2, 3...)
         sim_layout.addWidget(QLabel(f"Initial {self.model.n2_label}:"), 1, 0)
-        self.n2_init_spin = QDoubleSpinBox()
-        self.n2_init_spin.setRange(0.0, 5000.0)
-        self.n2_init_spin.setValue(15.0)
-        self.n2_init_spin.setSingleStep(1.0)
+        self.n2_init_spin = QSpinBox()
+        self.n2_init_spin.setRange(1, 1000000)
+        self.n2_init_spin.setValue(15)
+        self.n2_init_spin.setSingleStep(1)
+        self.n2_init_spin.setToolTip("Initial population count (must be a positive integer ≥ 1)")
         sim_layout.addWidget(self.n2_init_spin, 1, 1)
 
         # Initial Time (t_start / t0)
@@ -244,11 +246,17 @@ class ParameterPanel(QWidget):
             lbl.setToolTip(info.get("description", ""))
             param_layout.addWidget(lbl, row, 0)
 
-            spin = QDoubleSpinBox()
-            spin.setRange(info["min"], info["max"])
-            spin.setSingleStep(info["step"])
-            spin.setDecimals(3)
-            spin.setValue(p_val)
+            if info.get("is_int", False):
+                spin = QSpinBox()
+                spin.setRange(int(info["min"]), int(info["max"]))
+                spin.setSingleStep(int(info.get("step", 1)))
+                spin.setValue(int(round(p_val)))
+            else:
+                spin = QDoubleSpinBox()
+                spin.setRange(float(info["min"]), float(info["max"]))
+                spin.setSingleStep(float(info["step"]))
+                spin.setDecimals(int(info.get("decimals", 3)))
+                spin.setValue(float(p_val))
             spin.setToolTip(info.get("description", ""))
 
             # Connect changes to relationship classifier if competition
@@ -280,8 +288,8 @@ class ParameterPanel(QWidget):
             return
 
         if "initial" in data:
-            self.n1_init_spin.setValue(data["initial"][0])
-            self.n2_init_spin.setValue(data["initial"][1])
+            self.n1_init_spin.setValue(int(round(data["initial"][0])))
+            self.n2_init_spin.setValue(int(round(data["initial"][1])))
 
         if "t_span" in data:
             t_span = data["t_span"]
@@ -291,7 +299,11 @@ class ParameterPanel(QWidget):
         params = data.get("params", {})
         for k, v in params.items():
             if k in self._param_inputs:
-                self._param_inputs[k].setValue(v)
+                spin = self._param_inputs[k]
+                if isinstance(spin, QSpinBox):
+                    spin.setValue(int(round(v)))
+                else:
+                    spin.setValue(float(v))
 
         if isinstance(self.model, LotkaVolterraCompetitionModel):
             self._update_relationship_badge()
@@ -325,7 +337,7 @@ class ParameterPanel(QWidget):
         return {
             "model": self.model,
             "mode": self.mode,
-            "initial_state": (self.n1_init_spin.value(), self.n2_init_spin.value()),
+            "initial_state": (int(self.n1_init_spin.value()), int(self.n2_init_spin.value())),
             "t_span": (self.t_start_spin.value(), self.t_end_spin.value()),
             "num_points": self.points_spin.value(),
             "params": params,

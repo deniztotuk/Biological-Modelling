@@ -35,9 +35,11 @@ def simulate_model(
     if t_end <= t_start:
         t_end = t_start + 10.0
     valid_t_span = (t_start, t_end)
-
     t_eval = np.linspace(t_start, t_end, num_points)
-    n1_init, n2_init = max(0.0, float(initial_state[0])), max(0.0, float(initial_state[1]))
+
+    # Species individuals must be positive integers (>= 1)
+    n1_init = float(max(1, int(round(float(initial_state[0])))))
+    n2_init = float(max(1, int(round(float(initial_state[1])))))
 
     if mode == "discrete":
         # Discrete iteration step by step
