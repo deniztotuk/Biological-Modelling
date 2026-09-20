@@ -72,21 +72,37 @@ class ParameterPanel(QWidget):
         self.mode = mode
         self._build_panel_content()
 
-    def _build_panel_content(self):
-        # Clear existing layout
-        while self.content_layout.count():
-            item = self.content_layout.takeAt(0)
+    def _clear_layout(self, layout):
+        if layout is None:
+            return
+        while layout.count():
+            item = layout.takeAt(0)
             widget = item.widget()
-            if widget:
+            if widget is not None:
+                widget.setParent(None)
                 widget.deleteLater()
+            else:
+                sub_layout = item.layout()
+                if sub_layout is not None:
+                    self._clear_layout(sub_layout)
+
+    def _build_panel_content(self):
+        # Clear existing layout and all children to prevent overlapping text
+        self._clear_layout(self.content_layout)
+        for child in self.scroll_content.findChildren(QWidget):
+            child.setParent(None)
+            child.deleteLater()
         self._param_inputs.clear()
 
         if not self.model:
             return
 
-        # 1. Header with Model Name and Mode Badge
-        header_box = QVBoxLayout()
-        header_box.setSpacing(4)
+        # 1. Header with Model Name and Mode Badge inside a dedicated container widget
+        header_widget = QWidget()
+        header_widget.setObjectName("HeaderWidget")
+        header_box = QVBoxLayout(header_widget)
+        header_box.setContentsMargins(0, 0, 0, 0)
+        header_box.setSpacing(6)
 
         title_lbl = QLabel(self.model.name)
         title_lbl.setObjectName("ModelTitle")
@@ -94,6 +110,8 @@ class ParameterPanel(QWidget):
         header_box.addWidget(title_lbl)
 
         badge_layout = QHBoxLayout()
+        badge_layout.setContentsMargins(0, 0, 0, 0)
+        badge_layout.setSpacing(6)
         mode_text = "Continuous ODE (Runge-Kutta RK45)" if self.mode == "continuous" else "Discrete Recursion (Eq 3.14)"
         mode_badge = QLabel(mode_text)
         mode_badge.setObjectName("ModelBadge")
@@ -109,7 +127,7 @@ class ParameterPanel(QWidget):
 
         badge_layout.addStretch()
         header_box.addLayout(badge_layout)
-        self.content_layout.addLayout(header_box)
+        self.content_layout.addWidget(header_widget)
 
         # 2. Presets Selector
         model_presets = PRESETS.get(self.model.name, [])

@@ -313,6 +313,36 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_no_overlapping_model_headers_on_model_switch(self):
+        """Verify that switching models cleanly deletes old headers and prevents overlapping text."""
+        from PyQt6.QtWidgets import QApplication, QLabel
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        # Iterate through multiple models
+        for model in AVAILABLE_MODELS[:4]:
+            window._on_model_selected(model, "continuous")
+            QApplication.processEvents()
+
+            # Find all title labels in param_panel
+            title_labels = [
+                lbl for lbl in window.param_panel.findChildren(QLabel)
+                if lbl.objectName() == "ModelTitle"
+            ]
+            # Must be exactly 1 title label, never duplicate/overlapping!
+            self.assertEqual(len(title_labels), 1, f"Expected 1 title label for {model.name}, got {len(title_labels)}")
+            self.assertEqual(title_labels[0].text(), model.name)
+
+            # Find all mode badges
+            mode_badges = [
+                lbl for lbl in window.param_panel.findChildren(QLabel)
+                if lbl.objectName() == "ModelBadge"
+            ]
+            self.assertEqual(len(mode_badges), 1, f"Expected 1 mode badge for {model.name}, got {len(mode_badges)}")
+
+        window.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
