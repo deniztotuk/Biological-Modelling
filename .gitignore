@@ -49,6 +49,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Caches
+.mpl_cache/
+.pytest_cache/
+
+
 # Output simulation exports
 output/
 exports/
