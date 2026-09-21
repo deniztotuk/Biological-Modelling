@@ -191,13 +191,38 @@ QLabel#ModelTitle {
     color: #0f172a;
 }
 
-QLabel#ModelBadge {
-    background-color: #e0f2fe;
-    color: #0369a1;
+QLabel#ModelBadge,
+QPushButton#ModelBadge {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
     font-size: 11px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 4px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+QPushButton#ModelBadge[mode="continuous"] {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+QPushButton#ModelBadge[mode="continuous"]:hover {
+    background-color: #bfdbfe;
+    color: #1e40af;
+}
+
+QPushButton#ModelBadge[mode="discrete"] {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+QPushButton#ModelBadge[mode="discrete"]:hover {
+    background-color: #fecaca;
+    color: #991b1b;
 }
 
 QLabel#RelationshipBadge {
@@ -617,13 +642,38 @@ QLabel#ModelTitle {
     color: #f8fafc;
 }
 
-QLabel#ModelBadge {
-    background-color: #075985;
-    color: #e0f2fe;
+QLabel#ModelBadge,
+QPushButton#ModelBadge {
+    background-color: #1e3a8a;
+    color: #bfdbfe;
+    border: 1px solid #3b82f6;
     font-size: 11px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 4px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+QPushButton#ModelBadge[mode="continuous"] {
+    background-color: #1e3a8a;
+    color: #bfdbfe;
+    border: 1px solid #3b82f6;
+}
+
+QPushButton#ModelBadge[mode="continuous"]:hover {
+    background-color: #2563eb;
+    color: #eff6ff;
+}
+
+QPushButton#ModelBadge[mode="discrete"] {
+    background-color: #7f1d1d;
+    color: #fecaca;
+    border: 1px solid #ef4444;
+}
+
+QPushButton#ModelBadge[mode="discrete"]:hover {
+    background-color: #991b1b;
+    color: #fee2e2;
 }
 
 QLabel#RelationshipBadge {

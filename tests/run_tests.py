@@ -406,7 +406,7 @@ class TestGUIComponents(unittest.TestCase):
 
     def test_no_overlapping_model_headers_on_model_switch(self):
         """Verify that switching models cleanly deletes old headers."""
-        from PyQt6.QtWidgets import QApplication, QLabel
+        from PyQt6.QtWidgets import QApplication, QLabel, QPushButton
         from bio_models.ui.main_window import MainWindow
 
         window = MainWindow()
@@ -428,8 +428,8 @@ class TestGUIComponents(unittest.TestCase):
 
             # Find all mode badges
             mode_badges = [
-                lbl for lbl in window.param_panel.findChildren(QLabel)
-                if lbl.objectName() == "ModelBadge"
+                btn for btn in window.param_panel.findChildren(QPushButton)
+                if btn.objectName() == "ModelBadge"
             ]
             badge_msg = f"Expected 1 mode badge for {model.name}"
             self.assertEqual(len(mode_badges), 1, badge_msg)
@@ -544,6 +544,71 @@ class TestGUIComponents(unittest.TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(res.n1[0], 20.0)
         self.assertEqual(res.n2[0], 25.0)
+
+        window.close()
+
+    def test_mode_badge_toggle_interaction(self):
+        """Verify clicking mode badge toggles continuous/discrete mode."""
+        from PyQt6.QtWidgets import QPushButton
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        # 1. Verify drawer menu has no separate discrete button
+        drawer_buttons = [
+            btn.text() for btn, _, _ in window.drawer._buttons
+        ]
+        self.assertEqual(len(drawer_buttons), len(AVAILABLE_MODELS))
+        for text in drawer_buttons:
+            self.assertNotIn("Discrete Recursion", text)
+
+        # 2. Check initial continuous mode badge
+        badge = window.param_panel.mode_badge
+        self.assertIsInstance(badge, QPushButton)
+        self.assertEqual(badge.text(), "Continuous ODE")
+        self.assertEqual(badge.property("mode"), "continuous")
+        self.assertEqual(window.param_panel.mode, "continuous")
+        self.assertEqual(
+            window.param_panel.start_time_lbl.text(),
+            "Start Time (t₀ / t_start):",
+        )
+
+        # 3. Click mode badge to toggle to discrete mode
+        badge.click()
+        self.assertEqual(window.param_panel.mode, "discrete")
+        self.assertEqual(badge.text(), "Discrete Recursion")
+        self.assertEqual(badge.property("mode"), "discrete")
+        self.assertEqual(
+            window.param_panel.start_time_lbl.text(),
+            "Start Step (t₀):",
+        )
+        self.assertEqual(
+            window.param_panel.end_time_lbl.text(),
+            "End Step (t_end):",
+        )
+
+        # Verify simulation executed in discrete mode
+        res_disc = window.canvas_widget._current_result
+        self.assertIsNotNone(res_disc)
+        self.assertEqual(res_disc.metadata.get("mode"), "discrete")
+
+        # 4. Click mode badge again to toggle back to continuous mode
+        badge.click()
+        self.assertEqual(window.param_panel.mode, "continuous")
+        self.assertEqual(badge.text(), "Continuous ODE")
+        self.assertEqual(badge.property("mode"), "continuous")
+        self.assertEqual(
+            window.param_panel.start_time_lbl.text(),
+            "Start Time (t₀ / t_start):",
+        )
+        self.assertEqual(
+            window.param_panel.end_time_lbl.text(),
+            "End Time (t_end):",
+        )
+
+        res_cont = window.canvas_widget._current_result
+        self.assertIsNotNone(res_cont)
+        self.assertEqual(res_cont.metadata.get("mode"), "continuous")
 
         window.close()
 

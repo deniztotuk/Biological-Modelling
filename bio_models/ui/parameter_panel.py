@@ -4,7 +4,7 @@ Generates input fields, preset selectors, and simulation controls.
 """
 
 from typing import Any, Dict, Optional
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -43,6 +43,9 @@ class ParameterPanel(QWidget):
         self.mode: str = "continuous"
         self._param_inputs: Dict[str, QDoubleSpinBox] = {}
         self._just_changed_index: bool = False
+        self.mode_badge: Optional[QPushButton] = None
+        self.start_time_lbl: Optional[QLabel] = None
+        self.end_time_lbl: Optional[QLabel] = None
 
         self._init_ui()
 
@@ -123,9 +126,16 @@ class ParameterPanel(QWidget):
             if self.mode == "continuous"
             else "Discrete Recursion"
         )
-        mode_badge = QLabel(mode_text)
-        mode_badge.setObjectName("ModelBadge")
-        badge_layout.addWidget(mode_badge)
+        self.mode_badge = QPushButton(mode_text)
+        self.mode_badge.setObjectName("ModelBadge")
+        self.mode_badge.setProperty("mode", self.mode)
+        self.mode_badge.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.mode_badge.setToolTip(
+            "Click to switch calculation method between Continuous ODE "
+            "and Discrete Recursion"
+        )
+        self.mode_badge.clicked.connect(self._toggle_mode)
+        badge_layout.addWidget(self.mode_badge)
 
         # Relationship badge for competition
         if isinstance(self.model, LotkaVolterraCompetitionModel):
@@ -246,7 +256,8 @@ class ParameterPanel(QWidget):
             if self.mode == "continuous"
             else "Start Step (t₀):"
         )
-        sim_layout.addWidget(QLabel(start_label), 2, 0)
+        self.start_time_lbl = QLabel(start_label)
+        sim_layout.addWidget(self.start_time_lbl, 2, 0)
         self.t_start_spin = QDoubleSpinBox()
         self.t_start_spin.setRange(-10000.0, 100000.0)
         self.t_start_spin.setValue(0.0)
@@ -264,7 +275,8 @@ class ParameterPanel(QWidget):
             if self.mode == "continuous"
             else "End Step (t_end):"
         )
-        sim_layout.addWidget(QLabel(end_label), 3, 0)
+        self.end_time_lbl = QLabel(end_label)
+        sim_layout.addWidget(self.end_time_lbl, 3, 0)
         self.t_end_spin = QDoubleSpinBox()
         self.t_end_spin.setRange(-10000.0, 100000.0)
         self.t_end_spin.setValue(50.0)
@@ -405,6 +417,33 @@ class ParameterPanel(QWidget):
             rel = self.model.classify_relationship(a12.value(), a21.value())
             self.rel_badge.setText(rel)
             self.relationship_changed.emit(rel)
+
+    def _toggle_mode(self):
+        """Toggle calculation method between continuous and discrete mode."""
+        self.mode = "discrete" if self.mode == "continuous" else "continuous"
+        if self.mode_badge is not None:
+            is_disc = self.mode == "discrete"
+            self.mode_badge.setText(
+                "Discrete Recursion" if is_disc else "Continuous ODE"
+            )
+            self.mode_badge.setProperty("mode", self.mode)
+            self.mode_badge.style().unpolish(self.mode_badge)
+            self.mode_badge.style().polish(self.mode_badge)
+
+        if self.start_time_lbl is not None:
+            self.start_time_lbl.setText(
+                "Start Step (t₀):"
+                if self.mode == "discrete"
+                else "Start Time (t₀ / t_start):"
+            )
+        if self.end_time_lbl is not None:
+            self.end_time_lbl.setText(
+                "End Step (t_end):"
+                if self.mode == "discrete"
+                else "End Time (t_end):"
+            )
+
+        self.simulate_requested.emit()
 
     def get_simulation_inputs(self) -> Dict[str, Any]:
         """Extract all current user inputs from the UI."""
