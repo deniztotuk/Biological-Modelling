@@ -160,6 +160,7 @@ QPushButton.ModelNavButton {
     padding: 9px 16px;
     font-size: 12px;
     border: none;
+    border-bottom: 1px solid #e2e8f0;
     border-left: 3px solid transparent;
     border-radius: 0px;
 }
@@ -167,12 +168,14 @@ QPushButton.ModelNavButton {
 QPushButton.ModelNavButton:hover {
     background-color: #f1f5f9;
     color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 QPushButton.ModelNavButton[selected="true"] {
     background-color: #eff6ff;
     color: #2563eb;
     border-left: 3px solid #2563eb;
+    border-bottom: 1px solid #e2e8f0;
     font-weight: 700;
 }
 
@@ -667,6 +670,7 @@ QPushButton.ModelNavButton {
     padding: 9px 16px;
     font-size: 12px;
     border: none;
+    border-bottom: 1px solid #1e293b;
     border-left: 3px solid transparent;
     border-radius: 0px;
 }
@@ -674,12 +678,14 @@ QPushButton.ModelNavButton {
 QPushButton.ModelNavButton:hover {
     background-color: #1e293b;
     color: #ffffff;
+    border-bottom: 1px solid #1e293b;
 }
 
 QPushButton.ModelNavButton[selected="true"] {
     background-color: #1e293b;
     color: #38bdf8;
     border-left: 3px solid #38bdf8;
+    border-bottom: 1px solid #1e293b;
     font-weight: 700;
 }
 

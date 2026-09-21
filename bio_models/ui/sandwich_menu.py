@@ -85,7 +85,7 @@ class SandwichDrawer(QFrame):
         scroll_content = QWidget()
         content_layout = QVBoxLayout(scroll_content)
         content_layout.setContentsMargins(0, 8, 0, 16)
-        content_layout.setSpacing(2)
+        content_layout.setSpacing(0)
 
         # Categorize models
         models_by_cat = {}
