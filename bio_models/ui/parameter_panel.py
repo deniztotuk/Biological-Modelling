@@ -4,7 +4,7 @@ Generates input fields, preset selectors, and simulation controls.
 """
 
 from typing import Any, Dict, Optional
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -28,6 +28,7 @@ from bio_models.models import (
     LotkaVolterraCompetitionModel,
 )
 from bio_models.presets import PRESETS
+from bio_models.ui.styles import get_play_icon
 
 
 class ParameterPanel(QWidget):
@@ -38,8 +39,9 @@ class ParameterPanel(QWidget):
     simulate_requested = pyqtSignal()
     relationship_changed = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, theme: str = "dark", parent=None):
         super().__init__(parent)
+        self.theme = theme
         self.model: Optional[BiologicalModel] = None
         self.mode: str = "continuous"
         self._param_inputs: Dict[str, QDoubleSpinBox] = {}
@@ -74,11 +76,20 @@ class ParameterPanel(QWidget):
         main_layout.addWidget(scroll)
 
         # Persistent Action Button at bottom
-        self.run_btn = QPushButton("▶ Run Simulation & Update Plot")
+        self.run_btn = QPushButton("Run Simulation")
         self.run_btn.setObjectName("SimulateButton")
+        self.run_btn.setIcon(get_play_icon(self.theme))
+        self.run_btn.setIconSize(QSize(13, 13))
+        self.run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.run_btn.setToolTip("Run simulation (Shortcut: Enter)")
         self.run_btn.clicked.connect(self.simulate_requested.emit)
         main_layout.addWidget(self.run_btn)
+
+    def set_theme(self, theme: str):
+        """Update theme-dependent icons."""
+        self.theme = theme
+        if hasattr(self, "run_btn"):
+            self.run_btn.setIcon(get_play_icon(self.theme))
 
     def set_model(self, model: BiologicalModel, mode: str = "continuous"):
         self.model = model

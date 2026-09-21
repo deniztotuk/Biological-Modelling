@@ -69,10 +69,10 @@ class MainWindow(QMainWindow):
         run_action.triggered.connect(self.run_simulation)
         file_menu.addAction(run_action)
 
-        save_action = QAction("&Save Graph as JPEG...", self)
+        save_action = QAction("&Save Graph...", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
         save_action.setStatusTip(
-            "Export current graph as a high-resolution JPEG")
+            "Export current graph as a high-resolution plot image")
         save_action.triggered.connect(
             lambda: self.canvas_widget.save_graph_as_jpeg())
         file_menu.addAction(save_action)
@@ -151,7 +151,7 @@ class MainWindow(QMainWindow):
 
         top_layout.addStretch()
 
-        help_text = QLabel("[Enter] Run | [Ctrl+S] Save JPEG")
+        help_text = QLabel("[Enter] Run | [Ctrl+S] Save Graph")
         help_text.setObjectName("AppHelp")
         top_layout.addWidget(help_text)
 
@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
         content_splitter.setHandleWidth(4)
 
         # Parameter Input Panel
-        self.param_panel = ParameterPanel()
+        self.param_panel = ParameterPanel(theme=self.current_theme)
         self.param_panel.setMinimumWidth(370)
         self.param_panel.setMaximumWidth(480)
         self.param_panel.simulate_requested.connect(self.run_simulation)
@@ -243,9 +243,11 @@ class MainWindow(QMainWindow):
         self.setPalette(palette)
         self.setStyleSheet(stylesheet)
 
-        # Update canvas theme
+        # Update canvas and param panel themes
         if hasattr(self, "canvas_widget"):
             self.canvas_widget.set_theme(self.current_theme)
+        if hasattr(self, "param_panel"):
+            self.param_panel.set_theme(self.current_theme)
 
         # Update top bar button label to match active theme
         if hasattr(self, "theme_btn"):

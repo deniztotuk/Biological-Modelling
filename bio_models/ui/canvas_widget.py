@@ -17,7 +17,7 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
 )
 from matplotlib.figure import Figure
-from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
 )
 
 from bio_models.models import BiologicalModel, SimulationResult
-from bio_models.ui.styles import get_plot_colors
+from bio_models.ui.styles import get_plot_colors, get_save_icon
 
 matplotlib.use("QtAgg")
 
@@ -71,10 +71,13 @@ class BioPlotCanvas(QWidget):
         ch_layout.addWidget(self.info_lbl)
         ch_layout.addStretch()
 
-        self.export_btn = QPushButton("📷 Save Graph (JPEG)...")
-        self.export_btn.setObjectName("SaveJpegButton")
+        self.export_btn = QPushButton("Save Graph")
+        self.export_btn.setObjectName("SaveGraphButton")
+        self.export_btn.setIcon(get_save_icon(self.theme))
+        self.export_btn.setIconSize(QSize(13, 13))
+        self.export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.export_btn.setToolTip(
-            "Export high-resolution 300 DPI publication-ready JPEG plot"
+            "Save high-resolution 300 DPI plot image (Ctrl+S)"
         )
         self.export_btn.clicked.connect(lambda: self.save_graph_as_jpeg())
         ch_layout.addWidget(self.export_btn)
@@ -101,6 +104,8 @@ class BioPlotCanvas(QWidget):
     def set_theme(self, theme: str):
         """Update plotting colors and redraw active plots with new theme."""
         self.theme = theme
+        if hasattr(self, "export_btn"):
+            self.export_btn.setIcon(get_save_icon(self.theme))
         if self._current_result and self._current_model:
             self.update_plot(self._current_result, self._current_model)
         else:
@@ -429,7 +434,7 @@ class BioPlotCanvas(QWidget):
             default_name = f"{base_model_name}_simulation.jpeg"
             target_path, _ = QFileDialog.getSaveFileName(
                 self,
-                "Save Simulation Graph as JPEG",
+                "Save Simulation Graph",
                 default_name,
                 "JPEG Image (*.jpeg *.jpg);;PNG Image (*.png);;All Files (*)",
             )

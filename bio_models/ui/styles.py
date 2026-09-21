@@ -3,7 +3,7 @@ color palettes.
 """
 
 import os
-from PyQt6.QtGui import QColor, QPalette
+from PyQt6.QtGui import QColor, QIcon, QPalette
 
 _ICONS_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "icons"
@@ -13,10 +13,14 @@ _UP_LIGHT = f"{_ICONS_DIR}/chevron_up_light.svg"
 _DOWN_LIGHT = f"{_ICONS_DIR}/chevron_down_light.svg"
 _UP_DARK = f"{_ICONS_DIR}/chevron_up_dark.svg"
 _DOWN_DARK = f"{_ICONS_DIR}/chevron_down_dark.svg"
+_PLAY_LIGHT = f"{_ICONS_DIR}/play_light.svg"
+_PLAY_DARK = f"{_ICONS_DIR}/play_dark.svg"
+_SAVE_LIGHT = f"{_ICONS_DIR}/save_light.svg"
+_SAVE_DARK = f"{_ICONS_DIR}/save_dark.svg"
 
 
 def _ensure_icons():
-    """Ensure modern vector chevron icon files exist."""
+    """Ensure modern vector icon files exist."""
     os.makedirs(_ICONS_DIR, exist_ok=True)
     icons = {
         _UP_LIGHT: (
@@ -43,11 +47,57 @@ def _ensure_icons():
             'stroke-width="1.8" stroke-linecap="round" '
             'stroke-linejoin="round" fill="none"/></svg>'
         ),
+        _PLAY_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" '
+            'viewBox="0 0 16 16"><path d="M4.5 3.3c0-.6.7-1 1.2-.6l8 4.7'
+            'c.5.3.5 1 0 1.3l-8 4.7c-.5.3-1.2-.1-1.2-.6V3.3z" '
+            'fill="#ffffff"/></svg>'
+        ),
+        _PLAY_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" '
+            'viewBox="0 0 16 16"><path d="M4.5 3.3c0-.6.7-1 1.2-.6l8 4.7'
+            'c.5.3.5 1 0 1.3l-8 4.7c-.5.3-1.2-.1-1.2-.6V3.3z" '
+            'fill="#f4f4f5"/></svg>'
+        ),
+        _SAVE_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" '
+            'viewBox="0 0 16 16"><path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h1.3a1 '
+            '1 0 0 0 .8-.4l.5-.7A1 1 0 0 1 7.4 2.2h1.2a1 1 0 0 1 .8.7l.5.7'
+            'a1 1 0 0 0 .8.4H12a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-1.5 '
+            '1.5H4a1.5 1.5 0 0 1-1.5-1.5V5.5z" fill="none" stroke="#334155" '
+            'stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" '
+            'cy="8.2" r="2.2" fill="none" stroke="#334155" '
+            'stroke-width="1.4"/></svg>'
+        ),
+        _SAVE_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" '
+            'viewBox="0 0 16 16"><path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h1.3a1 '
+            '1 0 0 0 .8-.4l.5-.7A1 1 0 0 1 7.4 2.2h1.2a1 1 0 0 1 .8.7l.5.7'
+            'a1 1 0 0 0 .8.4H12a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-1.5 '
+            '1.5H4a1.5 1.5 0 0 1-1.5-1.5V5.5z" fill="none" stroke="#e4e4e7" '
+            'stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" '
+            'cy="8.2" r="2.2" fill="none" stroke="#e4e4e7" '
+            'stroke-width="1.4"/></svg>'
+        ),
     }
     for path, content in icons.items():
         if not os.path.exists(path):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(content)
+
+
+def get_play_icon(theme: str = "dark") -> QIcon:
+    """Return modern vector play icon for the active theme."""
+    _ensure_icons()
+    path = _PLAY_LIGHT if theme == "light" else _PLAY_DARK
+    return QIcon(path)
+
+
+def get_save_icon(theme: str = "dark") -> QIcon:
+    """Return modern vector save/camera icon for the active theme."""
+    _ensure_icons()
+    path = _SAVE_LIGHT if theme == "light" else _SAVE_DARK
+    return QIcon(path)
 
 
 _ensure_icons()
@@ -427,32 +477,42 @@ QPushButton#SimulateButton {
     background-color: #2563eb;
     color: #ffffff;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 6px;
-    padding: 10px 16px;
-    border: none;
+    padding: 9px 16px;
+    border: 1px solid #1d4ed8;
 }
 
 QPushButton#SimulateButton:hover {
     background-color: #1d4ed8;
+    border: 1px solid #1e40af;
 }
 
 QPushButton#SimulateButton:pressed {
     background-color: #1e40af;
 }
 
+QPushButton#SaveGraphButton,
 QPushButton#SaveJpegButton {
-    background-color: #059669;
-    color: #ffffff;
+    background-color: #ffffff;
+    color: #334155;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 6px;
-    padding: 8px 14px;
-    border: none;
+    padding: 7px 14px;
+    border: 1px solid #cbd5e1;
 }
 
+QPushButton#SaveGraphButton:hover,
 QPushButton#SaveJpegButton:hover {
-    background-color: #047857;
+    background-color: #f8fafc;
+    border: 1px solid #94a3b8;
+    color: #0f172a;
+}
+
+QPushButton#SaveGraphButton:pressed,
+QPushButton#SaveJpegButton:pressed {
+    background-color: #e2e8f0;
 }
 
 QPushButton#PresetButton {
@@ -946,34 +1006,45 @@ QPushButton#SimulateButton {
     background-color: #27272a;
     color: #ffffff;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 6px;
-    padding: 10px 16px;
+    padding: 9px 16px;
     border: 1px solid #3f3f46;
 }
 
 QPushButton#SimulateButton:hover {
-    background-color: #3f3f46;
+    background-color: #38383e;
     border: 1px solid #52525b;
+    color: #ffffff;
 }
 
 QPushButton#SimulateButton:pressed {
-    background-color: #18181b;
+    background-color: #1c1c1f;
+    border: 1px solid #3f3f46;
 }
 
+QPushButton#SaveGraphButton,
 QPushButton#SaveJpegButton {
-    background-color: #1c2620;
-    color: #86efac;
+    background-color: #202023;
+    color: #e4e4e7;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 6px;
-    padding: 8px 14px;
-    border: 1px solid #2d4436;
+    padding: 7px 14px;
+    border: 1px solid #333338;
 }
 
+QPushButton#SaveGraphButton:hover,
 QPushButton#SaveJpegButton:hover {
-    background-color: #25332b;
-    border: 1px solid #3b5846;
+    background-color: #2c2c30;
+    border: 1px solid #484852;
+    color: #ffffff;
+}
+
+QPushButton#SaveGraphButton:pressed,
+QPushButton#SaveJpegButton:pressed {
+    background-color: #18181b;
+    border: 1px solid #333338;
 }
 
 QPushButton#PresetButton {

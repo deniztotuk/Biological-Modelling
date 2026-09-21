@@ -706,6 +706,39 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(spin.value(), initial_val)
         window.close()
 
+    def test_modern_action_buttons(self):
+        """Verify Run Simulation and Save Graph buttons have modern styling."""
+        from PyQt6.QtCore import Qt
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        run_btn = window.param_panel.run_btn
+        self.assertEqual(run_btn.text(), "Run Simulation")
+        self.assertFalse(run_btn.icon().isNull())
+        self.assertEqual(
+            run_btn.cursor().shape(),
+            Qt.CursorShape.PointingHandCursor,
+        )
+
+        export_btn = window.canvas_widget.export_btn
+        self.assertEqual(export_btn.text(), "Save Graph")
+        self.assertNotIn("JPEG", export_btn.text())
+        self.assertFalse(export_btn.icon().isNull())
+        self.assertEqual(
+            export_btn.cursor().shape(),
+            Qt.CursorShape.PointingHandCursor,
+        )
+
+        # Test theme changes update icons
+        window.apply_theme("light")
+        self.assertFalse(run_btn.icon().isNull())
+        self.assertFalse(export_btn.icon().isNull())
+
+        window.apply_theme("dark")
+        self.assertFalse(run_btn.icon().isNull())
+        self.assertFalse(export_btn.icon().isNull())
+        window.close()
+
     def test_pep8_compliance(self):
         """Verify that all codebase files strictly adhere to PEP 8."""
         import subprocess
