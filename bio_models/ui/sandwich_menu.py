@@ -111,7 +111,7 @@ class SandwichDrawer(QFrame):
 
                 # For Lotka-Volterra competition, add discrete recursion mode
                 if "Competition" in model.name:
-                    disc_btn = QPushButton("  ↳ Discrete Recursion (Eq 3.14)")
+                    disc_btn = QPushButton("  ↳ Discrete Recursion")
                     disc_btn.setProperty("class", "ModelNavButton")
                     disc_btn.clicked.connect(
                         lambda checked, m=model: self._handle_selection(

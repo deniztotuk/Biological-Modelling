@@ -1,6 +1,6 @@
 """
 Mathematical Models for Species Interactions and Consumer-Resource Systems.
-Grounded in Otto & Day (Chapter 3).
+Continuous ODE systems and discrete-time recursions.
 """
 
 from abc import ABC, abstractmethod
@@ -89,11 +89,10 @@ class BiologicalModel(ABC):
 
 # -------------------------------------------------------------------------
 # 1. Lotka-Volterra Model of Competition & Multi-Species Interactions
-#    (Otto & Day Section 3.4.1, Equations 3.14 - 3.15)
 # -------------------------------------------------------------------------
 class LotkaVolterraCompetitionModel(BiologicalModel):
     """
-    Two-species competition and interaction model (Section 3.4.1).
+    Two-species competition and multi-species interaction model.
     dn1/dt = r1 * n1 * (1 - (n1 + alpha12 * n2) / K1)
     dn2/dt = r2 * n2 * (1 - (n2 + alpha21 * n1) / K2)
     """
@@ -186,7 +185,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
 
     def classify_relationship(self, a12: float, a21: float) -> str:
         """
-        Classifies interaction type according to Table on p. 73:
+        Classifies interaction type based on pair interaction coefficients:
         - Mutualistic: a12 < 0, a21 < 0
         - Commensal: (a12 < 0, a21 == 0) or (a12 == 0, a21 < 0)
         - Parasitic / Exploitative: (a12 > 0, a21 < 0) or (a12 < 0, a21 > 0)
@@ -229,7 +228,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
     def discrete_step(
         self, state: np.ndarray, params: Dict[str, float]
     ) -> np.ndarray:
-        """Discrete recursion equation (3.14a,b)."""
+        """Discrete recursion step for multi-species interaction."""
         n1 = max(0.0, float(state[0]))
         n2 = max(0.0, float(state[1]))
         r1, r2 = params["r1"], params["r2"]
@@ -276,7 +275,6 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
 
 # -------------------------------------------------------------------------
 # 2. General Consumer-Resource Model
-#    (Otto & Day Section 3.4.2, Equation 3.16 & Table 3.3)
 # -------------------------------------------------------------------------
 class ConsumerResourceModel(BiologicalModel):
     """
@@ -445,7 +443,7 @@ class ConsumerResourceModel(BiologicalModel):
         }
 
     def calc_f(self, n1: float, params: Dict[str, float]) -> float:
-        """Resource renewal function f(n1) from Table 3.3."""
+        """Resource renewal function f(n1)."""
         if self.f_type == "constant_inflow":
             return float(params.get("theta", 10.0))
         elif self.f_type == "constant_outflow":
@@ -464,7 +462,7 @@ class ConsumerResourceModel(BiologicalModel):
             return 0.0
 
     def calc_g(self, n1: float, n2: float, params: Dict[str, float]) -> float:
-        """Resource consumption rate g(n1, n2) from Table 3.3."""
+        """Resource consumption rate g(n1, n2)."""
         a = params.get("a", 0.1)
         c = params.get("c", 0.1)
         ac = a * c
@@ -486,7 +484,7 @@ class ConsumerResourceModel(BiologicalModel):
             return float(ac * n1 * n2)
 
     def calc_h(self, n2: float, params: Dict[str, float]) -> float:
-        """Consumer loss rate h(n2) from Table 3.3."""
+        """Consumer loss rate h(n2)."""
         delta = params.get("delta", 0.2)
         if self.h_type == "linear_death":
             return float(delta * n2)
@@ -589,14 +587,14 @@ class ConsumerResourceModel(BiologicalModel):
 # -------------------------------------------------------------------------
 class ChemostatModel(ConsumerResourceModel):
     """
-    Equation (3.17): Nutrient inflow / Chemostat Model.
+    Nutrient Inflow / Chemostat Model.
     dn1/dt = theta - a * c * n1 * n2
     dn2/dt = epsilon * a * c * n1 * n2 - delta * n2
     """
 
     def __init__(self):
         super().__init__(
-            name="Nutrient Inflow / Chemostat Model (Eq 3.17)",
+            name="Nutrient Inflow / Chemostat Model",
             category="Consumer-Resource Models",
             f_type="constant_inflow",
             g_type="type_1_linear",
@@ -621,14 +619,14 @@ class ChemostatModel(ConsumerResourceModel):
 
 class LotkaVolterraPredatorPreyModel(ConsumerResourceModel):
     """
-    Equation (3.18): Classic Lotka-Volterra Predator-Prey Model.
+    Classic Lotka-Volterra Predator-Prey Model.
     dn1/dt = r * n1 - a * c * n1 * n2
     dn2/dt = epsilon * a * c * n1 * n2 - delta * n2
     """
 
     def __init__(self):
         super().__init__(
-            name="Classic Lotka-Volterra Predator-Prey (Eq 3.18)",
+            name="Classic Lotka-Volterra Predator-Prey",
             category="Consumer-Resource Models",
             f_type="exponential",
             g_type="type_1_linear",
@@ -726,7 +724,7 @@ AVAILABLE_MODELS: List[BiologicalModel] = [
     RosenzweigMacArthurModel(),
     TypeIIIPredatorPreyModel(),
     ConsumerResourceModel(
-        name="Modular Custom Consumer-Resource (Table 3.3)",
+        name="Modular Custom Consumer-Resource Model",
         category="Consumer-Resource Models",
         f_type="logistic",
         g_type="type_2_saturating",

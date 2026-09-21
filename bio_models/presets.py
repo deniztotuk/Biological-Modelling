@@ -1,5 +1,5 @@
 """Predefined biological scenarios and parameter sets illustrating
-textbook phenomena from Otto & Day (Chapter 3).
+fundamental ecological population interaction dynamics.
 """
 
 from typing import Any, Dict, List
@@ -25,35 +25,37 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
         {
-            "name": "Competitive Exclusion (Species 1 Wins)",
+            "name": "Competitive Exclusion (Species 1 Outcompetes Species 2)",
             "description": (
-                "Species 1 outcompetes Species 2 regardless of initial "
-                "densities, driving Species 2 to extinction."
+                "Species 1 has strong competitive effect on species 2 "
+                "(α₂₁ > K₂/K₁) while species 2 is weak, driving species 2 "
+                "to extinction."
             ),
-            "initial": (15, 40),
+            "initial": (20, 25),
             "t_span": (0.0, 50.0),
             "params": {
                 "r1": 0.9,
                 "r2": 0.6,
                 "K1": 120,
                 "K2": 80,
-                "alpha12": 0.35,
-                "alpha21": 1.25,
+                "alpha12": 0.3,
+                "alpha21": 1.2,
             },
         },
         {
-            "name": "Competitive Exclusion (Species 2 Wins)",
+            "name": "Competitive Exclusion (Species 2 Outcompetes Species 1)",
             "description": (
-                "Species 2 dominates and drives Species 1 to zero."
+                "Species 2 has strong competitive effect on species 1 "
+                "(α₁₂ > K₁/K₁), driving species 1 to extinction."
             ),
-            "initial": (40, 15),
+            "initial": (25, 15),
             "t_span": (0.0, 50.0),
             "params": {
                 "r1": 0.6,
                 "r2": 0.9,
                 "K1": 80,
                 "K2": 120,
-                "alpha12": 1.30,
+                "alpha12": 1.3,
                 "alpha21": 0.35,
             },
         },
@@ -62,62 +64,78 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
                 "Bistability / Founder Control (Unstable Equilibrium)"
             ),
             "description": (
-                "Interspecific competition is stronger than intraspecific "
-                "(α > 1). The species with higher initial advantage wins; "
-                "other goes extinct."
+                "Both species compete fiercely (α₁₂ > K₁/K₂ and α₂₁ > K₂/K₁). "
+                "Whichever species starts with higher initial advantage wins."
             ),
-            "initial": (45, 50),
-            "t_span": (0.0, 60.0),
+            "initial": (40, 20),
+            "t_span": (0.0, 50.0),
             "params": {
                 "r1": 0.8,
                 "r2": 0.8,
                 "K1": 100,
                 "K2": 100,
-                "alpha12": 1.30,
-                "alpha21": 1.25,
+                "alpha12": 1.2,
+                "alpha21": 1.2,
             },
         },
         {
-            "name": "Mutualism / Symbiosis (Negative α)",
+            "name": "Obligate / Strong Mutualism (α₁₂, α₂₁ < 0)",
             "description": (
-                "Both α₁₂ < 0 and α₂₁ < 0: each species promotes the "
-                "abundance and carrying capacity of the other."
+                "Both species benefit each other; negative α coefficients "
+                "facilitate rapid reciprocal growth."
             ),
-            "initial": (20, 20),
+            "initial": (15, 15),
             "t_span": (0.0, 40.0),
             "params": {
-                "r1": 0.7,
-                "r2": 0.7,
+                "r1": 0.5,
+                "r2": 0.5,
                 "K1": 80,
                 "K2": 80,
                 "alpha12": -0.35,
-                "alpha21": -0.30,
+                "alpha21": -0.35,
             },
         },
         {
-            "name": "Commensalism (Species 2 benefits Species 1)",
+            "name": "Exploitative / Parasitic Dynamics (+ / -)",
             "description": (
-                "α₁₂ < 0 and α₂₁ = 0: Species 2 provides nesting/refuge to "
-                "Species 1 without any benefit or cost to itself."
+                "Species 1 benefits (α₁₂ < 0) at the direct expense of "
+                "species 2 (α₂₁ > 0)."
             ),
-            "initial": (15, 25),
-            "t_span": (0.0, 45.0),
+            "initial": (20, 25),
+            "t_span": (0.0, 50.0),
             "params": {
                 "r1": 0.6,
                 "r2": 0.6,
-                "K1": 70,
+                "K1": 100,
+                "K2": 100,
+                "alpha12": -0.4,
+                "alpha21": 0.6,
+            },
+        },
+        {
+            "name": "Commensalism (+ / 0)",
+            "description": (
+                "Species 1 benefits from species 2 (α₁₂ < 0) while species 2 "
+                "is unaffected (α₂₁ = 0)."
+            ),
+            "initial": (10, 30),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "r1": 0.7,
+                "r2": 0.5,
+                "K1": 90,
                 "K2": 90,
                 "alpha12": -0.45,
                 "alpha21": 0.0,
             },
         },
     ],
-    "Classic Lotka-Volterra Predator-Prey (Eq 3.18)": [
+    "Classic Lotka-Volterra Predator-Prey": [
         {
             "name": "Neutral Periodic Oscillations (Standard)",
             "description": (
                 "Classic closed orbits where prey and predator cycle "
-                "perpetually out of phase (Eq 3.18)."
+                "perpetually out of phase."
             ),
             "initial": (30, 10),
             "t_span": (0.0, 50.0),
@@ -146,7 +164,7 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
     ],
-    "Nutrient Inflow / Chemostat Model (Eq 3.17)": [
+    "Nutrient Inflow / Chemostat Model": [
         {
             "name": "Chemostat Steady State (Algal Inflow Equilibrium)",
             "description": (
@@ -158,25 +176,9 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             "params": {
                 "theta": 18.0,
                 "a": 0.06,
-                "c": 0.25,
-                "epsilon": 0.65,
-                "delta": 0.30,
-            },
-        },
-        {
-            "name": "Nutrient Depletion Shock (Low Inflow)",
-            "description": (
-                "Low nutrient inflow causes consumer population to collapse "
-                "due to starvation."
-            ),
-            "initial": (15, 20),
-            "t_span": (0.0, 50.0),
-            "params": {
-                "theta": 3.0,
-                "a": 0.05,
                 "c": 0.3,
-                "epsilon": 0.5,
-                "delta": 0.35,
+                "epsilon": 0.6,
+                "delta": 0.25,
             },
         },
     ],
@@ -187,50 +189,50 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
                 "High carrying capacity K pushes the equilibrium into the "
                 "unstable zone, producing a robust, stable limit cycle."
             ),
-            "initial": (40, 15),
-            "t_span": (0.0, 100.0),
+            "initial": (45, 15),
+            "t_span": (0.0, 80.0),
             "params": {
                 "r": 1.2,
-                "K": 140,
+                "K": 130,
                 "a": 0.8,
-                "c": 0.9,
-                "b": 25.0,
-                "epsilon": 0.45,
-                "delta": 0.22,
+                "c": 1.0,
+                "b": 30.0,
+                "epsilon": 0.4,
+                "delta": 0.2,
             },
         },
         {
             "name": "Damped Spiral to Stable Coexistence Focus",
             "description": (
-                "Moderate carrying capacity produces damped oscillations "
+                "Lower carrying capacity K dampens oscillations, "
                 "spiraling inward to a stable interior equilibrium."
             ),
-            "initial": (60, 25),
+            "initial": (40, 10),
             "t_span": (0.0, 80.0),
             "params": {
-                "r": 0.9,
-                "K": 65,
-                "a": 0.7,
-                "c": 0.8,
+                "r": 1.0,
+                "K": 60,
+                "a": 0.8,
+                "c": 1.0,
                 "b": 30.0,
-                "epsilon": 0.50,
-                "delta": 0.25,
+                "epsilon": 0.4,
+                "delta": 0.2,
             },
         },
     ],
     "Generalized Type III Predator-Prey (Sigmoidal)": [
         {
-            "name": "Prey Refuge Protection (k = 2.0)",
+            "name": "Sigmoidal Response with Prey Refuge",
             "description": (
-                "Sigmoidal functional response protects prey at low density "
-                "(prey switching / habitat refuges)."
+                "S-shaped functional response buffers low prey numbers, "
+                "preventing severe predator crashes."
             ),
-            "initial": (30, 12),
-            "t_span": (0.0, 80.0),
+            "initial": (35, 10),
+            "t_span": (0.0, 70.0),
             "params": {
                 "r": 1.0,
                 "K": 100,
-                "a": 0.6,
+                "a": 0.5,
                 "c": 1.0,
                 "b": 350.0,
                 "k": 2.2,
@@ -239,7 +241,7 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
     ],
-    "Modular Custom Consumer-Resource (Table 3.3)": [
+    "Modular Custom Consumer-Resource Model": [
         {
             "name": (
                 "Logistic Prey + Type II + Density-Dependent "

@@ -36,7 +36,8 @@ class MainWindow(QMainWindow):
     def __init__(self, default_theme: str = "light"):
         super().__init__()
         self.setWindowTitle(
-            "BioModel Studio — Ecology & Evolutionary Dynamics (Otto & Day)")
+            "BioModel Studio — Ecology & Evolutionary Dynamics"
+        )
         self.resize(1340, 820)
         self.setMinimumSize(950, 600)
 

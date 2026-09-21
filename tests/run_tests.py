@@ -166,7 +166,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(float(np.std(res.n1)), 2.0)
         self.assertGreater(float(np.std(res.n2)), 2.0)
 
-    def test_chemostat_model_eq_317(self):
+    def test_chemostat_model(self):
         model = ChemostatModel()
         params = model.default_params
         res = simulate_model(

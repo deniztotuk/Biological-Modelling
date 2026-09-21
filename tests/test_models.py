@@ -148,7 +148,7 @@ def test_classic_predator_prey_oscillations():
     assert np.std(res.n2) > 2.0
 
 
-def test_chemostat_model_eq_317():
+def test_chemostat_model():
     model = ChemostatModel()
     params = model.default_params
     res = simulate_model(

@@ -120,7 +120,7 @@ class ParameterPanel(QWidget):
         mode_text = (
             "Continuous ODE (Runge-Kutta RK45)"
             if self.mode == "continuous"
-            else "Discrete Recursion (Eq 3.14)"
+            else "Discrete Recursion"
         )
         mode_badge = QLabel(mode_text)
         mode_badge.setObjectName("ModelBadge")
@@ -171,7 +171,7 @@ class ParameterPanel(QWidget):
             "Modular" in self.model.name
             and isinstance(self.model, ConsumerResourceModel)
         ):
-            mod_group = QGroupBox("Modular Function Selection (Table 3.3)")
+            mod_group = QGroupBox("Modular Function Selection")
             mod_layout = QGridLayout(mod_group)
             mod_layout.setSpacing(8)
 
