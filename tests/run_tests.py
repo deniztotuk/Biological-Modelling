@@ -666,6 +666,46 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_modern_spinbox_and_combobox_styling(self):
+        """Verify that spinboxes use modernized stepper buttons and icons."""
+        from bio_models.ui.styles import (
+            LIGHT_STYLESHEET,
+            DARK_STYLESHEET,
+            _UP_LIGHT,
+            _DOWN_LIGHT,
+            _UP_DARK,
+            _DOWN_DARK,
+        )
+
+        # 1. Verify SVG icon files exist on disk
+        for path in (_UP_LIGHT, _DOWN_LIGHT, _UP_DARK, _DOWN_DARK):
+            self.assertTrue(os.path.isfile(path), f"Missing icon: {path}")
+            self.assertGreater(os.path.getsize(path), 50)
+
+        # 2. Verify stylesheets contain modern stepper subcontrol selectors
+        for ss in (LIGHT_STYLESHEET, DARK_STYLESHEET):
+            self.assertIn("QSpinBox::up-button", ss)
+            self.assertIn("QSpinBox::down-button", ss)
+            self.assertIn("QSpinBox::up-arrow", ss)
+            self.assertIn("QSpinBox::down-arrow", ss)
+            self.assertIn("QDoubleSpinBox::up-button", ss)
+            self.assertIn("QDoubleSpinBox::down-button", ss)
+            self.assertIn("QDoubleSpinBox::up-arrow", ss)
+            self.assertIn("QDoubleSpinBox::down-arrow", ss)
+            self.assertIn("QComboBox::down-arrow", ss)
+
+        # 3. Test functional stepping on UI spinboxes
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        spin = window.param_panel.n1_init_spin
+        initial_val = spin.value()
+        spin.stepUp()
+        self.assertEqual(spin.value(), initial_val + spin.singleStep())
+        spin.stepDown()
+        self.assertEqual(spin.value(), initial_val)
+        window.close()
+
     def test_pep8_compliance(self):
         """Verify that all codebase files strictly adhere to PEP 8."""
         import subprocess

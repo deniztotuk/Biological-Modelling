@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QListView,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -59,11 +60,14 @@ class ParameterPanel(QWidget):
         scroll.setObjectName("ParamScrollArea")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         self.scroll_content = QWidget()
         self.scroll_content.setObjectName("ParamScrollContent")
         self.content_layout = QVBoxLayout(self.scroll_content)
-        self.content_layout.setContentsMargins(8, 8, 8, 8)
+        self.content_layout.setContentsMargins(8, 8, 14, 8)
         self.content_layout.setSpacing(12)
 
         scroll.setWidget(self.scroll_content)
@@ -94,6 +98,17 @@ class ParameterPanel(QWidget):
                 sub_layout = item.layout()
                 if sub_layout is not None:
                     self._clear_layout(sub_layout)
+
+    def _configure_combo(self, combo: QComboBox) -> None:
+        """Configure combo box to avoid horizontal overflow."""
+        combo.setView(QListView())
+        combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        combo.setMinimumContentsLength(10)
+        combo.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
 
     def _build_panel_content(self):
         # Clear existing layout and all children to prevent overlapping text
@@ -157,7 +172,7 @@ class ParameterPanel(QWidget):
             preset_layout.setSpacing(6)
 
             self.preset_combo = QComboBox()
-            self.preset_combo.setView(QListView())
+            self._configure_combo(self.preset_combo)
             for p in presets:
                 self.preset_combo.addItem(p["name"], p)
             self.preset_combo.currentIndexChanged.connect(
@@ -186,7 +201,7 @@ class ParameterPanel(QWidget):
 
             mod_layout.addWidget(QLabel("Resource Renewal f(n₁):"), 0, 0)
             self.f_combo = QComboBox()
-            self.f_combo.setView(QListView())
+            self._configure_combo(self.f_combo)
             self.f_combo.addItems([
                 "logistic (r·n₁·(1 - n₁/K))",
                 "constant_inflow (θ)",
@@ -200,7 +215,7 @@ class ParameterPanel(QWidget):
                 QLabel("Consumption Rate g(n₁, n₂):"), 1, 0
             )
             self.g_combo = QComboBox()
-            self.g_combo.setView(QListView())
+            self._configure_combo(self.g_combo)
             self.g_combo.addItems([
                 "type_2_saturating (Holling II: ac·n₁/(b+n₁)·n₂)",
                 "type_1_linear (Type I: ac·n₁·n₂)",
@@ -212,7 +227,7 @@ class ParameterPanel(QWidget):
                 QLabel("Consumer Mortality h(n₂):"), 2, 0
             )
             self.h_combo = QComboBox()
-            self.h_combo.setView(QListView())
+            self._configure_combo(self.h_combo)
             self.h_combo.addItems([
                 "density_dependent_death ((δ + γ·n₂)·n₂)",
                 "linear_death (δ·n₂)",

@@ -186,8 +186,8 @@ class MainWindow(QMainWindow):
 
         # Parameter Input Panel
         self.param_panel = ParameterPanel()
-        self.param_panel.setMinimumWidth(320)
-        self.param_panel.setMaximumWidth(460)
+        self.param_panel.setMinimumWidth(370)
+        self.param_panel.setMaximumWidth(480)
         self.param_panel.simulate_requested.connect(self.run_simulation)
         content_splitter.addWidget(self.param_panel)
 

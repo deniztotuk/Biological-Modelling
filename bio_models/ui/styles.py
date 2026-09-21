@@ -2,9 +2,57 @@
 color palettes.
 """
 
-from PyQt6.QtGui import QPalette, QColor
+import os
+from PyQt6.QtGui import QColor, QPalette
 
-LIGHT_STYLESHEET = """
+_ICONS_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "icons"
+).replace("\\", "/")
+
+_UP_LIGHT = f"{_ICONS_DIR}/chevron_up_light.svg"
+_DOWN_LIGHT = f"{_ICONS_DIR}/chevron_down_light.svg"
+_UP_DARK = f"{_ICONS_DIR}/chevron_up_dark.svg"
+_DOWN_DARK = f"{_ICONS_DIR}/chevron_down_dark.svg"
+
+
+def _ensure_icons():
+    """Ensure modern vector chevron icon files exist."""
+    os.makedirs(_ICONS_DIR, exist_ok=True)
+    icons = {
+        _UP_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" '
+            'viewBox="0 0 12 8"><path d="M2 6L6 2L10 6" stroke="#475569" '
+            'stroke-width="1.8" stroke-linecap="round" '
+            'stroke-linejoin="round" fill="none"/></svg>'
+        ),
+        _DOWN_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" '
+            'viewBox="0 0 12 8"><path d="M2 2L6 6L10 2" stroke="#475569" '
+            'stroke-width="1.8" stroke-linecap="round" '
+            'stroke-linejoin="round" fill="none"/></svg>'
+        ),
+        _UP_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" '
+            'viewBox="0 0 12 8"><path d="M2 6L6 2L10 6" stroke="#94a3b8" '
+            'stroke-width="1.8" stroke-linecap="round" '
+            'stroke-linejoin="round" fill="none"/></svg>'
+        ),
+        _DOWN_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" '
+            'viewBox="0 0 12 8"><path d="M2 2L6 6L10 2" stroke="#94a3b8" '
+            'stroke-width="1.8" stroke-linecap="round" '
+            'stroke-linejoin="round" fill="none"/></svg>'
+        ),
+    }
+    for path, content in icons.items():
+        if not os.path.exists(path):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+
+_ensure_icons()
+
+_RAW_LIGHT_STYLESHEET = """
 QMainWindow {
     background-color: #f8fafc;
 }
@@ -239,15 +287,64 @@ QLabel#RelationshipBadge {
 QDoubleSpinBox, QSpinBox {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
-    border-radius: 5px;
-    padding: 5px 8px;
+    border-radius: 6px;
+    padding: 5px 24px 5px 8px;
     font-size: 12px;
     color: #0f172a;
-    min-height: 22px;
+    min-height: 24px;
 }
 
 QDoubleSpinBox:focus, QSpinBox:focus {
     border: 1.5px solid #2563eb;
+    background-color: #ffffff;
+}
+
+QDoubleSpinBox::up-button, QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #cbd5e1;
+    border-bottom: 0.5px solid #cbd5e1;
+    border-top-right-radius: 5px;
+    background-color: #f8fafc;
+}
+
+QDoubleSpinBox::up-button:hover, QSpinBox::up-button:hover {
+    background-color: #e2e8f0;
+}
+
+QDoubleSpinBox::up-button:pressed, QSpinBox::up-button:pressed {
+    background-color: #cbd5e1;
+}
+
+QDoubleSpinBox::up-arrow, QSpinBox::up-arrow {
+    image: url("__UP_LIGHT__");
+    width: 8px;
+    height: 5px;
+}
+
+QDoubleSpinBox::down-button, QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid #cbd5e1;
+    border-top: 0.5px solid #cbd5e1;
+    border-bottom-right-radius: 5px;
+    background-color: #f8fafc;
+}
+
+QDoubleSpinBox::down-button:hover, QSpinBox::down-button:hover {
+    background-color: #e2e8f0;
+}
+
+QDoubleSpinBox::down-button:pressed, QSpinBox::down-button:pressed {
+    background-color: #cbd5e1;
+}
+
+QDoubleSpinBox::down-arrow, QSpinBox::down-arrow {
+    image: url("__DOWN_LIGHT__");
+    width: 8px;
+    height: 5px;
 }
 
 /* QComboBox & Dropdown Popup (Light Theme) */
@@ -255,7 +352,7 @@ QComboBox {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 6px 28px 6px 12px;
     font-size: 12px;
     color: #0f172a;
     min-height: 24px;
@@ -274,20 +371,21 @@ QComboBox:focus {
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 26px;
+    width: 24px;
     border-left: 1px solid #cbd5e1;
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
-    background-color: #f1f5f9;
+    background-color: #f8fafc;
+}
+
+QComboBox::drop-down:hover {
+    background-color: #e2e8f0;
 }
 
 QComboBox::down-arrow {
-    width: 0px;
-    height: 0px;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #334155;
-    margin-right: 2px;
+    image: url("__DOWN_LIGHT__");
+    width: 9px;
+    height: 6px;
 }
 
 QComboBox QAbstractItemView, QComboBox QListView {
@@ -455,7 +553,13 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 }
 """
 
-DARK_STYLESHEET = """
+LIGHT_STYLESHEET = _RAW_LIGHT_STYLESHEET.replace(
+    "__UP_LIGHT__", _UP_LIGHT
+).replace(
+    "__DOWN_LIGHT__", _DOWN_LIGHT
+)
+
+_RAW_DARK_STYLESHEET = """
 QMainWindow {
     background-color: #0f172a;
 }
@@ -688,17 +792,66 @@ QLabel#RelationshipBadge {
 
 /* Inputs & SpinBoxes */
 QDoubleSpinBox, QSpinBox {
-    background-color: #0f172a;
+    background-color: #1e293b;
     border: 1px solid #334155;
-    border-radius: 5px;
-    padding: 5px 8px;
+    border-radius: 6px;
+    padding: 5px 24px 5px 8px;
     font-size: 12px;
     color: #f8fafc;
-    min-height: 22px;
+    min-height: 24px;
 }
 
 QDoubleSpinBox:focus, QSpinBox:focus {
     border: 1.5px solid #38bdf8;
+    background-color: #1e293b;
+}
+
+QDoubleSpinBox::up-button, QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #334155;
+    border-bottom: 0.5px solid #334155;
+    border-top-right-radius: 5px;
+    background-color: #1e293b;
+}
+
+QDoubleSpinBox::up-button:hover, QSpinBox::up-button:hover {
+    background-color: #334155;
+}
+
+QDoubleSpinBox::up-button:pressed, QSpinBox::up-button:pressed {
+    background-color: #475569;
+}
+
+QDoubleSpinBox::up-arrow, QSpinBox::up-arrow {
+    image: url("__UP_DARK__");
+    width: 8px;
+    height: 5px;
+}
+
+QDoubleSpinBox::down-button, QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid #334155;
+    border-top: 0.5px solid #334155;
+    border-bottom-right-radius: 5px;
+    background-color: #1e293b;
+}
+
+QDoubleSpinBox::down-button:hover, QSpinBox::down-button:hover {
+    background-color: #334155;
+}
+
+QDoubleSpinBox::down-button:pressed, QSpinBox::down-button:pressed {
+    background-color: #475569;
+}
+
+QDoubleSpinBox::down-arrow, QSpinBox::down-arrow {
+    image: url("__DOWN_DARK__");
+    width: 8px;
+    height: 5px;
 }
 
 /* QComboBox & Dropdown Popup (Dark Theme) */
@@ -706,7 +859,7 @@ QComboBox {
     background-color: #1e293b;
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 6px 28px 6px 12px;
     font-size: 12px;
     color: #f8fafc;
     min-height: 24px;
@@ -725,20 +878,21 @@ QComboBox:focus {
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 26px;
+    width: 24px;
     border-left: 1px solid #334155;
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
-    background-color: #0f172a;
+    background-color: #1e293b;
+}
+
+QComboBox::drop-down:hover {
+    background-color: #334155;
 }
 
 QComboBox::down-arrow {
-    width: 0px;
-    height: 0px;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #94a3b8;
-    margin-right: 2px;
+    image: url("__DOWN_DARK__");
+    width: 9px;
+    height: 6px;
 }
 
 QComboBox QAbstractItemView, QComboBox QListView {
@@ -905,6 +1059,12 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
     background: none;
 }
 """
+
+DARK_STYLESHEET = _RAW_DARK_STYLESHEET.replace(
+    "__UP_DARK__", _UP_DARK
+).replace(
+    "__DOWN_DARK__", _DOWN_DARK
+)
 
 LIGHT_PLOT_COLORS = {
     "figure_facecolor": "#ffffff",
