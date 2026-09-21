@@ -5,7 +5,7 @@ Grounded in Otto & Day (Chapter 3).
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, Tuple, Optional, Callable, List
+from typing import Dict, Any, Tuple, Optional, List
 import numpy as np
 
 
@@ -48,7 +48,7 @@ class BiologicalModel(ABC):
     @property
     @abstractmethod
     def n2_label(self) -> str:
-        """Label for species/variable 2 (e.g. Predator, Consumer, Species 2)."""
+        """Label for species/variable 2 (e.g. Predator, Species 2)."""
         pass
 
     @property
@@ -64,13 +64,18 @@ class BiologicalModel(ABC):
         pass
 
     @abstractmethod
-    def rhs(self, t: float, state: np.ndarray, params: Dict[str, float]) -> np.ndarray:
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
         """Right-hand side of continuous-time ODE: d[n1, n2]/dt."""
         pass
 
-    def discrete_step(self, state: np.ndarray, params: Dict[str, float]) -> np.ndarray:
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
         """Discrete-time recursion step: [n1(t+1), n2(t+1)]."""
-        raise NotImplementedError("Discrete mode not implemented for this model.")
+        raise NotImplementedError(
+            "Discrete mode not implemented for this model.")
 
     def get_nullclines(
         self,
@@ -143,7 +148,10 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
                 "max": 10000,
                 "step": 1,
                 "is_int": True,
-                "description": "Carrying capacity of species 1 (maximum sustainable individuals)",
+                "description": (
+                    "Carrying capacity of species 1 "
+                    "(maximum sustainable individuals)"
+                ),
             },
             "K2": {
                 "label": "K₂ (Carrying cap. sp. 2)",
@@ -151,21 +159,28 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
                 "max": 10000,
                 "step": 1,
                 "is_int": True,
-                "description": "Carrying capacity of species 2 (maximum sustainable individuals)",
+                "description": (
+                    "Carrying capacity of species 2 "
+                    "(maximum sustainable individuals)"
+                ),
             },
             "alpha12": {
                 "label": "α₁₂ (Effect of sp. 2 on 1)",
                 "min": -2.0,
                 "max": 3.0,
                 "step": 0.05,
-                "description": "Competition/interaction coefficient on species 1",
+                "description": (
+                    "Competition/interaction coefficient on species 1"
+                ),
             },
             "alpha21": {
                 "label": "α₂₁ (Effect of sp. 1 on 2)",
                 "min": -2.0,
                 "max": 3.0,
                 "step": 0.05,
-                "description": "Competition/interaction coefficient on species 2",
+                "description": (
+                    "Competition/interaction coefficient on species 2"
+                ),
             },
         }
 
@@ -185,14 +200,22 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
             return "Competitive (+ / +)"
         elif (a12 > eps and a21 < -eps) or (a12 < -eps and a21 > eps):
             return "Parasitic / Exploitative (+ / -)"
-        elif (a12 < -eps and abs(a21) <= eps) or (abs(a12) <= eps and a21 < -eps):
+        elif (
+            (a12 < -eps and abs(a21) <= eps)
+            or (abs(a12) <= eps and a21 < -eps)
+        ):
             return "Commensal (+ / 0)"
-        elif (a12 > eps and abs(a21) <= eps) or (abs(a12) <= eps and a21 > eps):
+        elif (
+            (a12 > eps and abs(a21) <= eps)
+            or (abs(a12) <= eps and a21 > eps)
+        ):
             return "Amensal (- / 0)"
         else:
             return "Neutral (0 / 0)"
 
-    def rhs(self, t: float, state: np.ndarray, params: Dict[str, float]) -> np.ndarray:
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
         n1 = max(0.0, float(state[0]))
         n2 = max(0.0, float(state[1]))
         r1, r2 = params["r1"], params["r2"]
@@ -203,7 +226,9 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
         dn2_dt = r2 * n2 * (1.0 - (n2 + a21 * n1) / K2)
         return np.array([dn1_dt, dn2_dt], dtype=float)
 
-    def discrete_step(self, state: np.ndarray, params: Dict[str, float]) -> np.ndarray:
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
         """Discrete recursion equation (3.14a,b)."""
         n1 = max(0.0, float(state[0]))
         n2 = max(0.0, float(state[1]))
@@ -232,10 +257,12 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
             n2_pts = (K1 - n1_pts) / a12
             valid = (n2_pts >= 0) & (n2_pts <= max(K2 * 2.0, n2_range[1]))
             if np.any(valid):
-                nullclines["dn₁/dt = 0 isocline"] = (n1_pts[valid], n2_pts[valid])
+                nullclines["dn₁/dt = 0 isocline"] = (
+                    n1_pts[valid], n2_pts[valid])
         else:
             # Vertical line at n1 = K1
-            nullclines["dn₁/dt = 0 isocline"] = (np.array([K1, K1]), np.array([0, n2_range[1]]))
+            nullclines["dn₁/dt = 0 isocline"] = (
+                np.array([K1, K1]), np.array([0, n2_range[1]]))
 
         # Isocline 2: n2 + a21 * n1 = K2 => n2 = K2 - a21 * n1
         n1_pts = np.linspace(0, max(K1 * 1.5, n1_range[1]), 100)
@@ -312,18 +339,109 @@ class ConsumerResourceModel(BiologicalModel):
     @property
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
         return {
-            "theta": {"label": "θ (Constant Inflow)", "min": 0.0, "max": 100.0, "step": 1.0, "description": "Constant resource immigration/inflow rate"},
-            "psi": {"label": "ψ (Constant Outflow)", "min": 0.0, "max": 50.0, "step": 0.5, "description": "Constant resource outflow rate"},
-            "r": {"label": "r (Resource growth rate)", "min": 0.01, "max": 5.0, "step": 0.05, "description": "Intrinsic per capita growth rate of resource"},
-            "K": {"label": "K (Carrying capacity)", "min": 1, "max": 10000, "step": 1, "is_int": True, "description": "Environmental carrying capacity for resource (maximum sustainable individuals)"},
-            "a_f": {"label": "a_f (Exp decay coeff)", "min": 0.001, "max": 0.5, "step": 0.005, "description": "Prey exponential decline factor"},
-            "a": {"label": "a (Attack / success prob)", "min": 0.001, "max": 1.0, "step": 0.01, "description": "Probability of successful consumption per contact"},
-            "c": {"label": "c (Contact rate)", "min": 0.001, "max": 2.0, "step": 0.01, "description": "Rate of contact between consumers and resources"},
-            "b": {"label": "b (Half-saturation const)", "min": 1.0, "max": 200.0, "step": 1.0, "description": "Resource density at half-maximum consumption"},
-            "k": {"label": "k (Type III exponent)", "min": 1.0, "max": 5.0, "step": 0.1, "description": "Hill exponent for sigmoidal functional response"},
-            "epsilon": {"label": "ε (Conversion efficiency)", "min": 0.01, "max": 1.0, "step": 0.02, "description": "Biomass conversion efficiency of consumed prey into predators"},
-            "delta": {"label": "δ (Consumer death rate)", "min": 0.01, "max": 2.0, "step": 0.01, "description": "Per capita mortality rate of consumer in absence of resource"},
-            "gamma": {"label": "γ (Density dep. mortality)", "min": 0.0, "max": 0.1, "step": 0.001, "description": "Intraspecific competition / density-dependent consumer death"},
+            "theta": {
+                "label": "θ (Constant Inflow)",
+                "min": 0.0,
+                "max": 100.0,
+                "step": 1.0,
+                "description": "Constant resource immigration/inflow rate",
+            },
+            "psi": {
+                "label": "ψ (Constant Outflow)",
+                "min": 0.0,
+                "max": 50.0,
+                "step": 0.5,
+                "description": "Constant resource outflow rate",
+            },
+            "r": {
+                "label": "r (Resource growth rate)",
+                "min": 0.01,
+                "max": 5.0,
+                "step": 0.05,
+                "description": "Intrinsic per capita growth rate of resource",
+            },
+            "K": {
+                "label": "K (Carrying capacity)",
+                "min": 1,
+                "max": 10000,
+                "step": 1,
+                "is_int": True,
+                "description": (
+                    "Environmental carrying capacity for resource "
+                    "(maximum sustainable individuals)"
+                ),
+            },
+            "a_f": {
+                "label": "a_f (Exp decay coeff)",
+                "min": 0.001,
+                "max": 0.5,
+                "step": 0.005,
+                "description": "Prey exponential decline factor",
+            },
+            "a": {
+                "label": "a (Attack / success prob)",
+                "min": 0.001,
+                "max": 1.0,
+                "step": 0.01,
+                "description": (
+                    "Probability of successful consumption per contact"
+                ),
+            },
+            "c": {
+                "label": "c (Contact rate)",
+                "min": 0.001,
+                "max": 2.0,
+                "step": 0.01,
+                "description": (
+                    "Rate of contact between consumers and resources"
+                ),
+            },
+            "b": {
+                "label": "b (Half-saturation const)",
+                "min": 1.0,
+                "max": 200.0,
+                "step": 1.0,
+                "description": "Resource density at half-maximum consumption",
+            },
+            "k": {
+                "label": "k (Type III exponent)",
+                "min": 1.0,
+                "max": 5.0,
+                "step": 0.1,
+                "description": (
+                    "Hill exponent for sigmoidal functional response"
+                ),
+            },
+            "epsilon": {
+                "label": "ε (Conversion efficiency)",
+                "min": 0.01,
+                "max": 1.0,
+                "step": 0.02,
+                "description": (
+                    "Biomass conversion efficiency of consumed "
+                    "prey into predators"
+                ),
+            },
+            "delta": {
+                "label": "δ (Consumer death rate)",
+                "min": 0.01,
+                "max": 2.0,
+                "step": 0.01,
+                "description": (
+                    "Per capita mortality rate of consumer in absence "
+                    "of resource"
+                ),
+            },
+            "gamma": {
+                "label": "γ (Density dep. mortality)",
+                "min": 0.0,
+                "max": 0.1,
+                "step": 0.001,
+                "description": (
+                    "Intraspecific competition / density-dependent "
+                    "consumer death"
+                ),
+            },
         }
 
     def calc_f(self, n1: float, params: Dict[str, float]) -> float:
@@ -378,7 +496,9 @@ class ConsumerResourceModel(BiologicalModel):
         else:
             return float(delta * n2)
 
-    def rhs(self, t: float, state: np.ndarray, params: Dict[str, float]) -> np.ndarray:
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
         n1 = max(0.0, float(state[0]))
         n2 = max(0.0, float(state[1]))
         eps = params.get("epsilon", 0.5)
@@ -399,12 +519,15 @@ class ConsumerResourceModel(BiologicalModel):
     ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
         nullclines = {}
         eps = params.get("epsilon", 0.5)
-        n1_pts = np.linspace(max(0.1, n1_range[0]), max(100.0, n1_range[1]), 200)
+        n1_pts = np.linspace(
+            max(0.1, n1_range[0]), max(100.0, n1_range[1]), 200)
 
         # Consumer nullcline: dn2/dt = 0 => eps * g(n1, n2) = h(n2)
         # For linear death h(n2) = delta * n2:
-        # Type I: eps * ac * n1 * n2 = delta * n2 => n1* = delta / (eps * ac) (vertical line)
-        # Type II: eps * (ac * n1 / (b + n1)) * n2 = delta * n2 => n1* = (b * delta) / (eps * ac - delta)
+        # Type I: eps * ac * n1 * n2 = delta * n2 =>
+        # n1* = delta / (eps * ac) (vertical line)
+        # Type II: eps * (ac * n1 / (b + n1)) * n2 = delta * n2 =>
+        # n1* = (b * delta) / (eps * ac - delta)
         a = params.get("a", 0.1)
         c = params.get("c", 0.1)
         ac = a * c
@@ -429,7 +552,8 @@ class ConsumerResourceModel(BiologicalModel):
                             np.array([0, n2_range[1] * 1.5]),
                         )
 
-        # Resource nullcline: dn1/dt = 0 => f(n1) = g(n1, n2) => n2 = f(n1) / (consumption_rate_per_consumer)
+        # Resource nullcline: dn1/dt = 0 => f(n1) = g(n1, n2) =>
+        # n2 = f(n1) / (consumption_rate_per_consumer)
         n2_vals = []
         valid_n1 = []
         for val in n1_pts:
@@ -454,7 +578,8 @@ class ConsumerResourceModel(BiologicalModel):
                     n2_vals.append(n2_val)
 
         if valid_n1:
-            nullclines["dn₁/dt = 0 isocline"] = (np.array(valid_n1), np.array(n2_vals))
+            nullclines["dn₁/dt = 0 isocline"] = (
+                np.array(valid_n1), np.array(n2_vals))
 
         return nullclines
 

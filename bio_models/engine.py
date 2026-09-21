@@ -4,7 +4,7 @@ Uses SciPy adaptive ODE solvers (RK45, LSODA) and discrete recurrence steps.
 """
 
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 import numpy as np
 from scipy.integrate import solve_ivp
 
@@ -23,8 +23,9 @@ def simulate_model(
     mode: str = "continuous",  # "continuous" or "discrete"
     ode_method: str = "RK45",  # "RK45", "LSODA", "Radau"
 ) -> SimulationResult:
-    """
-    Run continuous ODE integration or discrete iteration for the biological model.
+    """Run continuous ODE integration or discrete iteration.
+
+    Integrates or iterates the biological model over the given t_span.
     """
     if params is None:
         params = model.default_params.copy()
@@ -55,7 +56,8 @@ def simulate_model(
             try:
                 curr = model.discrete_step(curr, params)
             except NotImplementedError:
-                # Approximate Euler step if discrete recursion not explicitly defined
+                # Approximate Euler step if discrete recursion
+                # is not explicitly defined
                 dt = 1.0
                 curr = curr + dt * model.rhs(float(i), curr, params)
                 curr[0] = max(0.0, curr[0])
@@ -78,12 +80,16 @@ def simulate_model(
                 "elapsed_ms": elapsed_ms,
             },
             success=True,
-            message=f"Discrete simulation complete ({steps} steps in {elapsed_ms:.1f} ms)",
+            message=(
+                f"Discrete simulation complete ({steps} steps in "
+                f"{elapsed_ms:.1f} ms)"
+            ),
         )
 
     # Continuous integration via solve_ivp
     def ode_system(t, y):
-        # Clip state to prevent non-physical negative numbers during solver steps
+        # Clip state to prevent non-physical negative numbers
+        # during solver steps
         clipped = np.array([max(0.0, y[0]), max(0.0, y[1])], dtype=float)
         return model.rhs(t, clipped, params)
 
@@ -144,7 +150,10 @@ def simulate_model(
                 "elapsed_ms": elapsed_ms,
             },
             success=True,
-            message=f"Solved {len(sol.t)} time points in {elapsed_ms:.1f} ms using {ode_method}",
+            message=(
+                f"Solved {len(sol.t)} time points in {elapsed_ms:.1f} ms "
+                f"using {ode_method}"
+            ),
         )
 
     except Exception as e:

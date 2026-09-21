@@ -5,19 +5,17 @@ Native Menu Bar with Settings (Theme selection: Light / Dark), and shortcuts.
 """
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QActionGroup
+from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QWidget,
     QHBoxLayout,
-    QVBoxLayout,
-    QPushButton,
     QLabel,
-    QStatusBar,
+    QMainWindow,
+    QPushButton,
     QSplitter,
-    QMenuBar,
-    QMenu,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 from bio_models.models import BiologicalModel, AVAILABLE_MODELS
@@ -37,7 +35,8 @@ class MainWindow(QMainWindow):
 
     def __init__(self, default_theme: str = "light"):
         super().__init__()
-        self.setWindowTitle("BioModel Studio — Ecology & Evolutionary Dynamics (Otto & Day)")
+        self.setWindowTitle(
+            "BioModel Studio — Ecology & Evolutionary Dynamics (Otto & Day)")
         self.resize(1340, 820)
         self.setMinimumSize(950, 600)
 
@@ -55,7 +54,9 @@ class MainWindow(QMainWindow):
         self.drawer._handle_selection(initial_model, "continuous")
 
     def _init_menu_bar(self):
-        """Create native application menu bar with Settings and Theme selection."""
+        """Create native application menu bar with Settings and Theme
+        selection.
+        """
         menu_bar = self.menuBar()
 
         # 1. File Menu
@@ -69,8 +70,10 @@ class MainWindow(QMainWindow):
 
         save_action = QAction("&Save Graph as JPEG...", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
-        save_action.setStatusTip("Export current graph as a high-resolution JPEG")
-        save_action.triggered.connect(lambda: self.canvas_widget.save_graph_as_jpeg())
+        save_action.setStatusTip(
+            "Export current graph as a high-resolution JPEG")
+        save_action.triggered.connect(
+            lambda: self.canvas_widget.save_graph_as_jpeg())
         file_menu.addAction(save_action)
 
         file_menu.addSeparator()
@@ -97,13 +100,15 @@ class MainWindow(QMainWindow):
 
         self.light_theme_action = QAction("&Light Theme", self, checkable=True)
         self.light_theme_action.setChecked(self.current_theme == "light")
-        self.light_theme_action.triggered.connect(lambda: self.apply_theme("light"))
+        self.light_theme_action.triggered.connect(
+            lambda: self.apply_theme("light"))
         theme_group.addAction(self.light_theme_action)
         theme_menu.addAction(self.light_theme_action)
 
         self.dark_theme_action = QAction("&Dark Theme", self, checkable=True)
         self.dark_theme_action.setChecked(self.current_theme == "dark")
-        self.dark_theme_action.triggered.connect(lambda: self.apply_theme("dark"))
+        self.dark_theme_action.triggered.connect(
+            lambda: self.apply_theme("dark"))
         theme_group.addAction(self.dark_theme_action)
         theme_menu.addAction(self.dark_theme_action)
 
@@ -129,7 +134,8 @@ class MainWindow(QMainWindow):
         # Hamburger / Sandwich Menu Toggle Button
         self.menu_toggle_btn = QPushButton("☰  Models Menu")
         self.menu_toggle_btn.setObjectName("SandwichToggleBtn")
-        self.menu_toggle_btn.setToolTip("Toggle Models Navigation Drawer (Shortcut: Ctrl+M / Cmd+M)")
+        self.menu_toggle_btn.setToolTip(
+            "Toggle Models Navigation Drawer (Shortcut: Ctrl+M / Cmd+M)")
         self.menu_toggle_btn.clicked.connect(self._toggle_menu)
         top_layout.addWidget(self.menu_toggle_btn)
 
@@ -137,7 +143,8 @@ class MainWindow(QMainWindow):
         app_title.setObjectName("AppTitle")
         top_layout.addWidget(app_title)
 
-        subtitle = QLabel("• Predator-Prey, Competition & Consumer-Resource Dynamics")
+        subtitle = QLabel(
+            "• Predator-Prey, Competition & Consumer-Resource Dynamics")
         subtitle.setObjectName("AppSubtitle")
         top_layout.addWidget(subtitle)
 
@@ -150,7 +157,8 @@ class MainWindow(QMainWindow):
         # Quick Theme Switcher Button on the bar (reflects current theme)
         self.theme_btn = QPushButton("☀️ Light Mode")
         self.theme_btn.setObjectName("ThemeToggleBtn")
-        self.theme_btn.setToolTip("Click to toggle between Light and Dark themes")
+        self.theme_btn.setToolTip(
+            "Click to toggle between Light and Dark themes")
         self.theme_btn.clicked.connect(self._toggle_quick_theme)
         top_layout.addWidget(self.theme_btn)
 
@@ -172,7 +180,8 @@ class MainWindow(QMainWindow):
         # Splitter between Parameter Panel and Canvas
         content_splitter = QSplitter(Qt.Orientation.Horizontal)
         content_splitter.setHandleWidth(4)
-        content_splitter.setStyleSheet("QSplitter::handle { background-color: #cbd5e1; }")
+        content_splitter.setStyleSheet(
+            "QSplitter::handle { background-color: #cbd5e1; }")
 
         # Parameter Input Panel
         self.param_panel = ParameterPanel()
@@ -197,7 +206,8 @@ class MainWindow(QMainWindow):
         # -------------------------------------------------------------
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready. Select a model or scenario to begin.")
+        self.status_bar.showMessage(
+            "Ready. Select a model or scenario to begin.")
 
     def _setup_shortcuts(self):
         # Enter / Return runs simulation
@@ -213,10 +223,13 @@ class MainWindow(QMainWindow):
 
         # Ctrl+S / Cmd+S exports JPEG
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
-        save_shortcut.activated.connect(lambda: self.canvas_widget.save_graph_as_jpeg())
+        save_shortcut.activated.connect(
+            lambda: self.canvas_widget.save_graph_as_jpeg())
 
     def apply_theme(self, theme_name: str):
-        """Apply theme ('light' or 'dark') across the entire application and plot canvas."""
+        """Apply theme ('light' or 'dark') across the entire application
+        and plot canvas.
+        """
         self.current_theme = theme_name.lower()
         stylesheet = get_stylesheet(self.current_theme)
         palette = get_theme_palette(self.current_theme)
@@ -237,18 +250,24 @@ class MainWindow(QMainWindow):
         if hasattr(self, "theme_btn"):
             if self.current_theme == "light":
                 self.theme_btn.setText("☀️ Light Mode")
-                self.theme_btn.setToolTip("Currently in Light Mode. Click to switch to Dark Mode.")
+                self.theme_btn.setToolTip(
+                    "Currently in Light Mode. Click to switch to Dark Mode.")
             else:
                 self.theme_btn.setText("🌙 Dark Mode")
-                self.theme_btn.setToolTip("Currently in Dark Mode. Click to switch to Light Mode.")
+                self.theme_btn.setToolTip(
+                    "Currently in Dark Mode. Click to switch to Light Mode.")
 
         # Sync menu check states
-        if hasattr(self, "light_theme_action") and hasattr(self, "dark_theme_action"):
+        if (
+            hasattr(self, "light_theme_action")
+            and hasattr(self, "dark_theme_action")
+        ):
             self.light_theme_action.setChecked(self.current_theme == "light")
             self.dark_theme_action.setChecked(self.current_theme == "dark")
 
         if hasattr(self, "status_bar"):
-            self.status_bar.showMessage(f"Applied {self.current_theme.capitalize()} Theme", 3000)
+            self.status_bar.showMessage(
+                f"Applied {self.current_theme.capitalize()} Theme", 3000)
 
     def _toggle_quick_theme(self):
         new_theme = "dark" if self.current_theme == "light" else "light"
@@ -286,7 +305,8 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage(result.message)
 
     def _on_export_completed(self, path: str):
-        self.status_bar.showMessage(f"Graph successfully exported to JPEG: {path}", 6000)
+        self.status_bar.showMessage(
+            f"Graph successfully exported to JPEG: {path}", 6000)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

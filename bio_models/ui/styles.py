@@ -1,5 +1,5 @@
-"""
-Desktop application styling, themes (Light and Dark), and plotting color palettes.
+"""Desktop application styling, themes (Light and Dark), and plotting
+color palettes.
 """
 
 from PyQt6.QtGui import QPalette, QColor
@@ -289,7 +289,8 @@ QComboBox QAbstractItemView::item:hover, QComboBox QListView::item:hover {
     color: #0f172a;
 }
 
-QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
+QComboBox QAbstractItemView::item:selected,
+QComboBox QListView::item:selected {
     background-color: #e0f2fe;
     color: #0369a1;
     font-weight: 700;
@@ -714,7 +715,8 @@ QComboBox QAbstractItemView::item:hover, QComboBox QListView::item:hover {
     color: #ffffff;
 }
 
-QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
+QComboBox QAbstractItemView::item:selected,
+QComboBox QListView::item:selected {
     background-color: #0284c7;
     color: #ffffff;
     font-weight: 700;
@@ -937,6 +939,7 @@ def get_theme_palette(theme: str = "light") -> QPalette:
     pal.setColor(QPalette.ColorRole.ToolTipBase, panel_bg)
     pal.setColor(QPalette.ColorRole.ToolTipText, fg)
     pal.setColor(QPalette.ColorRole.Text, fg)
+    pal.setColor(QPalette.ColorRole.PlaceholderText, sub_fg)
     pal.setColor(QPalette.ColorRole.Button, panel_bg)
     pal.setColor(QPalette.ColorRole.ButtonText, fg)
     pal.setColor(QPalette.ColorRole.BrightText, QColor("#ffffff"))

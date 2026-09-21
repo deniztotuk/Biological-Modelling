@@ -3,25 +3,29 @@ Dynamic Parameter Panel.
 Generates input fields, preset selectors, and simulation controls.
 """
 
-from typing import Dict, Any, Optional
-from PyQt6.QtCore import pyqtSignal, Qt
+from typing import Any, Dict, Optional
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QLabel,
-    QPushButton,
     QComboBox,
-    QListView,
     QDoubleSpinBox,
-    QSpinBox,
-    QScrollArea,
     QFrame,
+    QGridLayout,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListView,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
 
-from bio_models.models import BiologicalModel, LotkaVolterraCompetitionModel, ConsumerResourceModel
+from bio_models.models import (
+    BiologicalModel,
+    ConsumerResourceModel,
+    LotkaVolterraCompetitionModel,
+)
 from bio_models.presets import PRESETS
 
 
@@ -98,7 +102,7 @@ class ParameterPanel(QWidget):
         if not self.model:
             return
 
-        # 1. Header with Model Name and Mode Badge inside a dedicated container widget
+        # 1. Header with Model Name and Mode Badge
         header_widget = QWidget()
         header_widget.setObjectName("HeaderWidget")
         header_box = QVBoxLayout(header_widget)
@@ -113,7 +117,11 @@ class ParameterPanel(QWidget):
         badge_layout = QHBoxLayout()
         badge_layout.setContentsMargins(0, 0, 0, 0)
         badge_layout.setSpacing(6)
-        mode_text = "Continuous ODE (Runge-Kutta RK45)" if self.mode == "continuous" else "Discrete Recursion (Eq 3.14)"
+        mode_text = (
+            "Continuous ODE (Runge-Kutta RK45)"
+            if self.mode == "continuous"
+            else "Discrete Recursion (Eq 3.14)"
+        )
         mode_badge = QLabel(mode_text)
         mode_badge.setObjectName("ModelBadge")
         badge_layout.addWidget(mode_badge)
@@ -130,26 +138,27 @@ class ParameterPanel(QWidget):
         header_box.addLayout(badge_layout)
         self.content_layout.addWidget(header_widget)
 
-        # 2. Presets Selector
-        model_presets = PRESETS.get(self.model.name, [])
-        if model_presets:
-            preset_group = QGroupBox("Biological Scenarios && Presets")
+        # 2. Biological Presets Selector
+        presets = PRESETS.get(self.model.name, [])
+        if presets:
+            preset_group = QGroupBox("Biological Scenarios & Presets")
             preset_layout = QVBoxLayout(preset_group)
             preset_layout.setSpacing(6)
 
             self.preset_combo = QComboBox()
             self.preset_combo.setView(QListView())
-            for p in model_presets:
+            for p in presets:
                 self.preset_combo.addItem(p["name"], p)
+            self.preset_combo.currentIndexChanged.connect(
+                self._on_preset_changed
+            )
 
-            self.preset_desc = QLabel(model_presets[0]["description"])
-            self.preset_desc.setObjectName("PresetDescLabel")
+            self.preset_desc = QLabel(presets[0]["description"])
+            self.preset_desc.setObjectName("PresetDescription")
             self.preset_desc.setWordWrap(True)
 
-            self.preset_combo.currentIndexChanged.connect(self._on_preset_changed)
-
-            load_btn = QPushButton("Apply Selected Scenario")
-            load_btn.setObjectName("PresetButton")
+            load_btn = QPushButton("Load Selected Scenario")
+            load_btn.setObjectName("PresetLoadBtn")
             load_btn.clicked.connect(self._apply_current_preset)
 
             preset_layout.addWidget(self.preset_combo)
@@ -158,7 +167,10 @@ class ParameterPanel(QWidget):
             self.content_layout.addWidget(preset_group)
 
         # 3. Modular Function Selector (Only for Modular Consumer-Resource)
-        if "Modular" in self.model.name and isinstance(self.model, ConsumerResourceModel):
+        if (
+            "Modular" in self.model.name
+            and isinstance(self.model, ConsumerResourceModel)
+        ):
             mod_group = QGroupBox("Modular Function Selection (Table 3.3)")
             mod_layout = QGridLayout(mod_group)
             mod_layout.setSpacing(8)
@@ -175,7 +187,9 @@ class ParameterPanel(QWidget):
             ])
             mod_layout.addWidget(self.f_combo, 0, 1)
 
-            mod_layout.addWidget(QLabel("Consumption Rate g(n₁, n₂):"), 1, 0)
+            mod_layout.addWidget(
+                QLabel("Consumption Rate g(n₁, n₂):"), 1, 0
+            )
             self.g_combo = QComboBox()
             self.g_combo.setView(QListView())
             self.g_combo.addItems([
@@ -185,7 +199,9 @@ class ParameterPanel(QWidget):
             ])
             mod_layout.addWidget(self.g_combo, 1, 1)
 
-            mod_layout.addWidget(QLabel("Consumer Mortality h(n₂):"), 2, 0)
+            mod_layout.addWidget(
+                QLabel("Consumer Mortality h(n₂):"), 2, 0
+            )
             self.h_combo = QComboBox()
             self.h_combo.setView(QListView())
             self.h_combo.addItems([
@@ -200,8 +216,8 @@ class ParameterPanel(QWidget):
 
             self.content_layout.addWidget(mod_group)
 
-        # 4. Initial Conditions & Simulation Settings
-        sim_group = QGroupBox("Initial Conditions && Time Span")
+        # 4. Simulation Settings & Initial Conditions
+        sim_group = QGroupBox("Initial Conditions & Time Range")
         sim_layout = QGridLayout(sim_group)
         sim_layout.setSpacing(8)
 
@@ -211,7 +227,8 @@ class ParameterPanel(QWidget):
         self.n1_init_spin.setRange(1, 1000000)
         self.n1_init_spin.setValue(25)
         self.n1_init_spin.setSingleStep(1)
-        self.n1_init_spin.setToolTip("Initial population count (must be a positive integer ≥ 1)")
+        self.n1_init_spin.setToolTip(
+            "Initial population count (must be a positive integer ≥ 1)")
         sim_layout.addWidget(self.n1_init_spin, 0, 1)
 
         # Initial n2 (Positive integers only: 1, 2, 3...)
@@ -220,28 +237,41 @@ class ParameterPanel(QWidget):
         self.n2_init_spin.setRange(1, 1000000)
         self.n2_init_spin.setValue(15)
         self.n2_init_spin.setSingleStep(1)
-        self.n2_init_spin.setToolTip("Initial population count (must be a positive integer ≥ 1)")
+        self.n2_init_spin.setToolTip(
+            "Initial population count (must be a positive integer ≥ 1)")
         sim_layout.addWidget(self.n2_init_spin, 1, 1)
 
         # Initial Time (t_start / t0)
-        start_label = "Start Time (t₀ / t_start):" if self.mode == "continuous" else "Start Step (t₀):"
+        start_label = (
+            "Start Time (t₀ / t_start):"
+            if self.mode == "continuous"
+            else "Start Step (t₀):"
+        )
         sim_layout.addWidget(QLabel(start_label), 2, 0)
         self.t_start_spin = QDoubleSpinBox()
         self.t_start_spin.setRange(-10000.0, 100000.0)
         self.t_start_spin.setValue(0.0)
         self.t_start_spin.setSingleStep(1.0)
-        self.t_start_spin.setToolTip("Initial simulation time point (can start at 0 or any arbitrary value)")
+        self.t_start_spin.setToolTip(
+            "Initial simulation time point (can start at 0 or any arbitrary "
+            "value)"
+        )
         self.t_start_spin.valueChanged.connect(self._on_t_start_changed)
         sim_layout.addWidget(self.t_start_spin, 2, 1)
 
         # End Time (t_end / t_max)
-        end_label = "End Time (t_end):" if self.mode == "continuous" else "End Step (t_end):"
+        end_label = (
+            "End Time (t_end):"
+            if self.mode == "continuous"
+            else "End Step (t_end):"
+        )
         sim_layout.addWidget(QLabel(end_label), 3, 0)
         self.t_end_spin = QDoubleSpinBox()
         self.t_end_spin.setRange(-10000.0, 100000.0)
         self.t_end_spin.setValue(50.0)
         self.t_end_spin.setSingleStep(5.0)
-        self.t_end_spin.setToolTip("Final simulation time point (must be greater than start time)")
+        self.t_end_spin.setToolTip(
+            "Final simulation time point (must be greater than start time)")
         sim_layout.addWidget(self.t_end_spin, 3, 1)
 
         # Sampling points
@@ -264,7 +294,16 @@ class ParameterPanel(QWidget):
 
         row = 0
         for p_key, p_val in defaults.items():
-            info = meta.get(p_key, {"label": p_key, "min": -100.0, "max": 1000.0, "step": 0.05, "description": ""})
+            info = meta.get(
+                p_key,
+                {
+                    "label": p_key,
+                    "min": -100.0,
+                    "max": 1000.0,
+                    "step": 0.05,
+                    "description": "",
+                },
+            )
             lbl = QLabel(info["label"])
             lbl.setToolTip(info.get("description", ""))
             param_layout.addWidget(lbl, row, 0)
@@ -283,7 +322,10 @@ class ParameterPanel(QWidget):
             spin.setToolTip(info.get("description", ""))
 
             # Connect changes to relationship classifier if competition
-            if isinstance(self.model, LotkaVolterraCompetitionModel) and p_key in ("alpha12", "alpha21"):
+            if (
+                isinstance(self.model, LotkaVolterraCompetitionModel)
+                and p_key in ("alpha12", "alpha21")
+            ):
                 spin.valueChanged.connect(self._update_relationship_badge)
 
             param_layout.addWidget(spin, row, 1)
@@ -345,7 +387,10 @@ class ParameterPanel(QWidget):
             self.simulate_requested.emit()
 
     def _update_relationship_badge(self):
-        if not isinstance(self.model, LotkaVolterraCompetitionModel) or not self.rel_badge:
+        if (
+            not isinstance(self.model, LotkaVolterraCompetitionModel)
+            or not self.rel_badge
+        ):
             return
         a12 = self._param_inputs.get("alpha12", None)
         a21 = self._param_inputs.get("alpha21", None)
@@ -360,7 +405,10 @@ class ParameterPanel(QWidget):
         return {
             "model": self.model,
             "mode": self.mode,
-            "initial_state": (int(self.n1_init_spin.value()), int(self.n2_init_spin.value())),
+            "initial_state": (
+                int(self.n1_init_spin.value()),
+                int(self.n2_init_spin.value()),
+            ),
             "t_span": (self.t_start_spin.value(), self.t_end_spin.value()),
             "num_points": self.points_spin.value(),
             "params": params,

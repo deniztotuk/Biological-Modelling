@@ -4,28 +4,30 @@ Allows toggling and selecting between competition and consumer-resource models.
 """
 
 from typing import List, Tuple
-from PyQt6.QtCore import pyqtSignal, QPropertyAnimation, QEasingCurve, QSize, Qt
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
     QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
-from bio_models.models import BiologicalModel, AVAILABLE_MODELS
+from bio_models.models import AVAILABLE_MODELS, BiologicalModel
 
 
 class SandwichDrawer(QFrame):
-    """
-    Collapsible side drawer navigation menu ('Sandwich menu').
-    Dynamically sizes to fit full model names in normal and fullscreen resolutions,
-    while gracefully compressing and enabling horizontal scrolling in small window resolutions.
+    """Collapsible side drawer navigation menu ('Sandwich menu').
+
+    Dynamically sizes to fit full model names in normal and fullscreen
+    resolutions, while gracefully compressing and enabling horizontal
+    scrolling in small window resolutions.
     """
 
-    model_selected = pyqtSignal(BiologicalModel, str)  # (model, mode: 'continuous' or 'discrete')
+    # (model, mode: 'continuous' or 'discrete')
+    model_selected = pyqtSignal(BiologicalModel, str)
 
     DEFAULT_EXPANDED_WIDTH = 360
     MIN_EXPANDED_WIDTH = 260
@@ -75,8 +77,10 @@ class SandwichDrawer(QFrame):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setStyleSheet("background-color: transparent;")
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         scroll_content = QWidget()
         content_layout = QVBoxLayout(scroll_content)
@@ -97,7 +101,11 @@ class SandwichDrawer(QFrame):
                 # Add continuous button
                 btn = QPushButton(f"  • {model.name}")
                 btn.setProperty("class", "ModelNavButton")
-                btn.clicked.connect(lambda checked, m=model: self._handle_selection(m, "continuous"))
+                btn.clicked.connect(
+                    lambda checked, m=model: self._handle_selection(
+                        m, "continuous"
+                    )
+                )
                 content_layout.addWidget(btn)
                 self._buttons.append((btn, model, "continuous"))
 
@@ -105,7 +113,11 @@ class SandwichDrawer(QFrame):
                 if "Competition" in model.name:
                     disc_btn = QPushButton("  ↳ Discrete Recursion (Eq 3.14)")
                     disc_btn.setProperty("class", "ModelNavButton")
-                    disc_btn.clicked.connect(lambda checked, m=model: self._handle_selection(m, "discrete"))
+                    disc_btn.clicked.connect(
+                        lambda checked, m=model: self._handle_selection(
+                            m, "discrete"
+                        )
+                    )
                     content_layout.addWidget(disc_btn)
                     self._buttons.append((disc_btn, model, "discrete"))
 
@@ -119,11 +131,14 @@ class SandwichDrawer(QFrame):
             self._set_active_button(first_btn)
 
     def _calculate_optimal_width(self):
-        """Calculate optimal width to fit all model names without any horizontal scrollbar."""
+        """Calculate optimal width to fit all model names without any
+        horizontal scrollbar.
+        """
         max_btn_w = 0
         for btn, _, _ in self._buttons:
             fm = btn.fontMetrics()
-            btn_w = fm.horizontalAdvance(btn.text()) + 36  # padding (16 left + 16 right) + left indicator
+            # padding (16 left + 16 right) + left indicator
+            btn_w = fm.horizontalAdvance(btn.text()) + 36
             if btn_w > max_btn_w:
                 max_btn_w = btn_w
 
@@ -135,28 +150,41 @@ class SandwichDrawer(QFrame):
                     max_btn_w = cat_w
 
         # Ensure clearance for vertical scrollbar (16-20px) and margins
-        self._optimal_expanded_width = max(max_btn_w + 24, self.DEFAULT_EXPANDED_WIDTH)
+        self._optimal_expanded_width = max(
+            max_btn_w + 24, self.DEFAULT_EXPANDED_WIDTH
+        )
         self._expanded_width = self._optimal_expanded_width
 
     def adapt_to_window_width(self, window_width: int):
-        """
-        Dynamically adapt drawer width:
-        - At default (1340px) or fullscreen/high resolutions: comfortably sized
-          at optimal_expanded_width so the horizontal scrollbar disappears.
-        - At smaller window widths (<1300px down to minimum 950px): gracefully shrinks
-          down to min_expanded_width, allowing the horizontal scrollbar to appear as needed.
+        """Dynamically adapt drawer width:
+        - At default (1340px) or fullscreen/high resolutions: comfortably
+          sized at optimal_expanded_width so the horizontal scrollbar
+          disappears.
+        - At smaller window widths (<1300px down to minimum 950px):
+          gracefully shrinks down to min_expanded_width, allowing the
+          horizontal scrollbar to appear as needed.
         """
         if window_width >= 1300:
             target_w = self._optimal_expanded_width
         else:
             ratio = max(0.0, min(1.0, (window_width - 950) / 350.0))
-            target_w = int(self._min_expanded_width + (self._optimal_expanded_width - self._min_expanded_width) * ratio)
+            target_w = int(
+                self._min_expanded_width
+                + (self._optimal_expanded_width - self._min_expanded_width)
+                * ratio
+            )
 
         self._expanded_width = target_w
         if not self._is_collapsed:
-            if hasattr(self, "anim") and self.anim.state() == QPropertyAnimation.State.Running:
+            if (
+                hasattr(self, "anim")
+                and self.anim.state() == QPropertyAnimation.State.Running
+            ):
                 self.anim.stop()
-            if hasattr(self, "anim_min") and self.anim_min.state() == QPropertyAnimation.State.Running:
+            if (
+                hasattr(self, "anim_min")
+                and self.anim_min.state() == QPropertyAnimation.State.Running
+            ):
                 self.anim_min.stop()
             self.setFixedWidth(target_w)
 
