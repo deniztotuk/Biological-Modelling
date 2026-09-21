@@ -612,6 +612,60 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_all_models_support_discrete_step_and_toggle(self):
+        """Verify that every biological model supports discrete recursion."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        for model in AVAILABLE_MODELS:
+            # 1. Test model.discrete_step directly
+            init_state = np.array([20.0, 15.0])
+            params = model.default_params
+            next_state = model.discrete_step(init_state, params)
+            self.assertIsInstance(next_state, np.ndarray)
+            self.assertEqual(len(next_state), 2)
+            self.assertTrue(np.all(next_state >= 0))
+
+            # 2. Test simulation in discrete mode
+            res = simulate_model(
+                model=model,
+                initial_state=(20.0, 15.0),
+                t_span=(0.0, 25.0),
+                num_points=50,
+                params=params,
+                mode="discrete",
+            )
+            self.assertTrue(res.success)
+            self.assertEqual(res.metadata.get("mode"), "discrete")
+            self.assertEqual(len(res.t), 50)
+            self.assertTrue(np.all(res.n1 >= 0))
+            self.assertTrue(np.all(res.n2 >= 0))
+
+            # 3. Test GUI toggle interaction for this model
+            window._on_model_selected(model, "continuous")
+            QApplication.processEvents()
+
+            self.assertEqual(window.param_panel.mode, "continuous")
+            self.assertEqual(
+                window.param_panel.mode_badge.text(), "Continuous ODE"
+            )
+
+            # Click badge to toggle into discrete mode
+            window.param_panel.mode_badge.click()
+            QApplication.processEvents()
+
+            self.assertEqual(window.param_panel.mode, "discrete")
+            self.assertEqual(
+                window.param_panel.mode_badge.text(), "Discrete Recursion"
+            )
+            gui_res = window.canvas_widget._current_result
+            self.assertIsNotNone(gui_res)
+            self.assertEqual(gui_res.metadata.get("mode"), "discrete")
+
+        window.close()
+
     def test_pep8_compliance(self):
         """Verify that all codebase files strictly adhere to PEP 8."""
         import subprocess

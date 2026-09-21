@@ -509,6 +509,22 @@ class ConsumerResourceModel(BiologicalModel):
         dn2_dt = eps * gn12 - hn2
         return np.array([dn1_dt, dn2_dt], dtype=float)
 
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion step for consumer-resource dynamics."""
+        n1 = max(0.0, float(state[0]))
+        n2 = max(0.0, float(state[1]))
+        eps = params.get("epsilon", 0.5)
+
+        fn1 = self.calc_f(n1, params)
+        gn12 = self.calc_g(n1, n2, params)
+        hn2 = self.calc_h(n2, params)
+
+        n1_next = n1 + fn1 - gn12
+        n2_next = n2 + eps * gn12 - hn2
+        return np.array([max(0.0, n1_next), max(0.0, n2_next)], dtype=float)
+
     def get_nullclines(
         self,
         params: Dict[str, float],
