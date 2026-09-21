@@ -462,8 +462,8 @@ class TestGUIComponents(unittest.TestCase):
             QPalette.ColorRole.Base).name().lower()
         text_color_dark = preset_combo.view().palette().color(
             QPalette.ColorRole.Text).name().lower()
-        self.assertEqual(base_color_dark, "#1e293b")
-        self.assertEqual(text_color_dark, "#f8fafc")
+        self.assertEqual(base_color_dark, "#1a1a1a")
+        self.assertEqual(text_color_dark, "#f4f4f5")
 
         window.close()
 

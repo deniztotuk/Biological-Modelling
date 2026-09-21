@@ -9,6 +9,7 @@ JPEG / PNG.
 
 import os
 from typing import Optional
+import warnings
 
 import matplotlib
 import numpy as np
@@ -230,7 +231,7 @@ class BioPlotCanvas(QWidget):
 
         self.ax_time.set_title(
             "Population Dynamics (Time Series)",
-            fontsize=11,
+            fontsize=10.5,
             fontweight="bold",
             color=colors["text_color"],
             pad=10,
@@ -358,7 +359,7 @@ class BioPlotCanvas(QWidget):
 
         self.ax_phase.set_title(
             "Phase Portrait (State Space)",
-            fontsize=11,
+            fontsize=10.5,
             fontweight="bold",
             color=colors["text_color"],
             pad=10,
@@ -391,8 +392,10 @@ class BioPlotCanvas(QWidget):
         for text in leg_phase.get_texts():
             text.set_color(colors["text_color"])
 
-        self.figure.tight_layout(pad=2.8, w_pad=3.5)
-        self.canvas.draw()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self.figure.tight_layout(pad=2.2, w_pad=4.0)
+            self.canvas.draw()
 
         self.info_lbl.setText(
             f"{result.message} | Final: n₁={n1[-1]:.2f}, n₂={n2[-1]:.2f}"
@@ -469,3 +472,15 @@ class BioPlotCanvas(QWidget):
                     f"Failed to save image:\n{e}",
                 )
             return None
+
+    def resizeEvent(self, event):
+        """Recompute tight layout dynamically on canvas resize."""
+        super().resizeEvent(event)
+        if self._current_result is not None:
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    self.figure.tight_layout(pad=2.2, w_pad=4.0)
+                    self.canvas.draw_idle()
+            except Exception:
+                pass

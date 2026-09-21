@@ -181,8 +181,6 @@ class MainWindow(QMainWindow):
         # Splitter between Parameter Panel and Canvas
         content_splitter = QSplitter(Qt.Orientation.Horizontal)
         content_splitter.setHandleWidth(4)
-        content_splitter.setStyleSheet(
-            "QSplitter::handle { background-color: #cbd5e1; }")
 
         # Parameter Input Panel
         self.param_panel = ParameterPanel()
@@ -198,6 +196,8 @@ class MainWindow(QMainWindow):
 
         # Proportions: 35% params, 65% plot
         content_splitter.setSizes([380, 720])
+        content_splitter.setStretchFactor(0, 0)
+        content_splitter.setStretchFactor(1, 1)
 
         body_layout.addWidget(content_splitter, stretch=1)
         root_layout.addLayout(body_layout, stretch=1)
