@@ -128,21 +128,21 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
         return {
             "r1": {
-                "label": "r₁ (Growth rate sp. 1)",
+                "label": "Growth rate sp. 1 (r₁):",
                 "min": -2.0,
                 "max": 5.0,
                 "step": 0.05,
                 "description": "Intrinsic per capita growth rate of species 1",
             },
             "r2": {
-                "label": "r₂ (Growth rate sp. 2)",
+                "label": "Growth rate sp. 2 (r₂):",
                 "min": -2.0,
                 "max": 5.0,
                 "step": 0.05,
                 "description": "Intrinsic per capita growth rate of species 2",
             },
             "K1": {
-                "label": "K₁ (Carrying cap. sp. 1)",
+                "label": "Carrying cap. sp. 1 (K₁):",
                 "min": 1,
                 "max": 10000,
                 "step": 1,
@@ -153,7 +153,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
                 ),
             },
             "K2": {
-                "label": "K₂ (Carrying cap. sp. 2)",
+                "label": "Carrying cap. sp. 2 (K₂):",
                 "min": 1,
                 "max": 10000,
                 "step": 1,
@@ -164,7 +164,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
                 ),
             },
             "alpha12": {
-                "label": "α₁₂ (Effect of sp. 2 on 1)",
+                "label": "Effect of sp. 2 on 1 (α₁₂):",
                 "min": -2.0,
                 "max": 3.0,
                 "step": 0.05,
@@ -173,7 +173,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
                 ),
             },
             "alpha21": {
-                "label": "α₂₁ (Effect of sp. 1 on 2)",
+                "label": "Effect of sp. 1 on 2 (α₂₁):",
                 "min": -2.0,
                 "max": 3.0,
                 "step": 0.05,
@@ -338,28 +338,28 @@ class ConsumerResourceModel(BiologicalModel):
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
         return {
             "theta": {
-                "label": "θ (Constant Inflow)",
+                "label": "Constant Inflow (θ):",
                 "min": 0.0,
                 "max": 100.0,
                 "step": 1.0,
                 "description": "Constant resource immigration/inflow rate",
             },
             "psi": {
-                "label": "ψ (Constant Outflow)",
+                "label": "Constant Outflow (ψ):",
                 "min": 0.0,
                 "max": 50.0,
                 "step": 0.5,
                 "description": "Constant resource outflow rate",
             },
             "r": {
-                "label": "r (Resource growth rate)",
+                "label": "Resource growth rate (r):",
                 "min": 0.01,
                 "max": 5.0,
                 "step": 0.05,
                 "description": "Intrinsic per capita growth rate of resource",
             },
             "K": {
-                "label": "K (Carrying capacity)",
+                "label": "Carrying capacity (K):",
                 "min": 1,
                 "max": 10000,
                 "step": 1,
@@ -370,14 +370,14 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "a_f": {
-                "label": "a<sub>f</sub> (Exp decay coeff)",
+                "label": "Exp decay coeff (a<sub>f</sub>):",
                 "min": 0.001,
                 "max": 0.5,
                 "step": 0.005,
                 "description": "Prey exponential decline factor",
             },
             "a": {
-                "label": "a (Attack / success prob)",
+                "label": "Attack / success prob (a):",
                 "min": 0.001,
                 "max": 1.0,
                 "step": 0.01,
@@ -386,7 +386,7 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "c": {
-                "label": "c (Contact rate)",
+                "label": "Contact rate (c):",
                 "min": 0.001,
                 "max": 2.0,
                 "step": 0.01,
@@ -395,14 +395,14 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "b": {
-                "label": "b (Half-saturation const)",
+                "label": "Half-saturation const (b):",
                 "min": 1.0,
                 "max": 200.0,
                 "step": 1.0,
                 "description": "Resource density at half-maximum consumption",
             },
             "k": {
-                "label": "k (Type III exponent)",
+                "label": "Type III exponent (k):",
                 "min": 1.0,
                 "max": 5.0,
                 "step": 0.1,
@@ -411,7 +411,7 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "epsilon": {
-                "label": "ε (Conversion efficiency)",
+                "label": "Conversion efficiency (ε):",
                 "min": 0.01,
                 "max": 1.0,
                 "step": 0.02,
@@ -421,7 +421,7 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "delta": {
-                "label": "δ (Consumer death rate)",
+                "label": "Consumer death rate (δ):",
                 "min": 0.01,
                 "max": 2.0,
                 "step": 0.01,
@@ -431,7 +431,7 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "gamma": {
-                "label": "γ (Density dep. mortality)",
+                "label": "Density dep. mortality (γ):",
                 "min": 0.0,
                 "max": 0.1,
                 "step": 0.001,
