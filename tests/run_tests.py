@@ -570,7 +570,7 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(window.param_panel.mode, "continuous")
         self.assertEqual(
             window.param_panel.start_time_lbl.text(),
-            "Start Time (t₀ / t_start):",
+            "Start Time (t<sub>start</sub>):",
         )
 
         # 3. Click mode badge to toggle to discrete mode
@@ -580,11 +580,11 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(badge.property("mode"), "discrete")
         self.assertEqual(
             window.param_panel.start_time_lbl.text(),
-            "Start Step (t₀):",
+            "Start Step (t<sub>start</sub>):",
         )
         self.assertEqual(
             window.param_panel.end_time_lbl.text(),
-            "End Step (t_end):",
+            "End Step (t<sub>end</sub>):",
         )
 
         # Verify simulation executed in discrete mode
@@ -599,11 +599,11 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(badge.property("mode"), "continuous")
         self.assertEqual(
             window.param_panel.start_time_lbl.text(),
-            "Start Time (t₀ / t_start):",
+            "Start Time (t<sub>start</sub>):",
         )
         self.assertEqual(
             window.param_panel.end_time_lbl.text(),
-            "End Time (t_end):",
+            "End Time (t<sub>end</sub>):",
         )
 
         res_cont = window.canvas_widget._current_result

@@ -144,6 +144,7 @@ class ParameterPanel(QWidget):
         self.mode_badge = QPushButton(mode_text)
         self.mode_badge.setObjectName("ModelBadge")
         self.mode_badge.setProperty("mode", self.mode)
+        self.mode_badge.setMinimumWidth(135)
         self.mode_badge.setCursor(Qt.CursorShape.PointingHandCursor)
         self.mode_badge.setToolTip(
             "Click to switch calculation method between Continuous ODE "
@@ -267,9 +268,9 @@ class ParameterPanel(QWidget):
 
         # Initial Time (t_start / t0)
         start_label = (
-            "Start Time (t₀ / t_start):"
+            "Start Time (t<sub>start</sub>):"
             if self.mode == "continuous"
-            else "Start Step (t₀):"
+            else "Start Step (t<sub>start</sub>):"
         )
         self.start_time_lbl = QLabel(start_label)
         sim_layout.addWidget(self.start_time_lbl, 2, 0)
@@ -286,9 +287,9 @@ class ParameterPanel(QWidget):
 
         # End Time (t_end / t_max)
         end_label = (
-            "End Time (t_end):"
+            "End Time (t<sub>end</sub>):"
             if self.mode == "continuous"
-            else "End Step (t_end):"
+            else "End Step (t<sub>end</sub>):"
         )
         self.end_time_lbl = QLabel(end_label)
         sim_layout.addWidget(self.end_time_lbl, 3, 0)
@@ -447,15 +448,15 @@ class ParameterPanel(QWidget):
 
         if self.start_time_lbl is not None:
             self.start_time_lbl.setText(
-                "Start Step (t₀):"
+                "Start Step (t<sub>start</sub>):"
                 if self.mode == "discrete"
-                else "Start Time (t₀ / t_start):"
+                else "Start Time (t<sub>start</sub>):"
             )
         if self.end_time_lbl is not None:
             self.end_time_lbl.setText(
-                "End Step (t_end):"
+                "End Step (t<sub>end</sub>):"
                 if self.mode == "discrete"
-                else "End Time (t_end):"
+                else "End Time (t<sub>end</sub>):"
             )
 
         self.simulate_requested.emit()
