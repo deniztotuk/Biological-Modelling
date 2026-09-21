@@ -243,13 +243,13 @@ class BioPlotCanvas(QWidget):
         self.ax_time.set_xlabel(
             time_unit,
             fontsize=10,
-            fontweight="600",
+            fontweight="bold",
             color=colors["subtext_color"],
         )
         self.ax_time.set_ylabel(
             "Population Density / Abundance",
             fontsize=10,
-            fontweight="600",
+            fontweight="bold",
             color=colors["subtext_color"],
         )
         self.ax_time.set_xlim(left=t[0], right=t[-1])
@@ -366,13 +366,13 @@ class BioPlotCanvas(QWidget):
         self.ax_phase.set_xlabel(
             result.n1_label,
             fontsize=10,
-            fontweight="600",
+            fontweight="bold",
             color=colors["subtext_color"],
         )
         self.ax_phase.set_ylabel(
             result.n2_label,
             fontsize=10,
-            fontweight="600",
+            fontweight="bold",
             color=colors["subtext_color"],
         )
         self.ax_phase.set_xlim(left=0, right=max_n1)
