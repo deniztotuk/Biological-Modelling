@@ -3,8 +3,14 @@ Sandwich / Hamburger Drawer Menu for Model Selection.
 Allows toggling and selecting between competition and consumer-resource models.
 """
 
-from typing import List, Tuple
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtSignal
+from typing import List, Optional, Tuple
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QPropertyAnimation,
+    Qt,
+    pyqtProperty,
+    pyqtSignal,
+)
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -32,12 +38,22 @@ class SandwichDrawer(QFrame):
     DEFAULT_EXPANDED_WIDTH = 360
     MIN_EXPANDED_WIDTH = 260
 
+    def _get_drawer_width(self) -> int:
+        return self.width()
+
+    def _set_drawer_width(self, w: int):
+        self.setFixedWidth(w)
+
+    drawerWidth = pyqtProperty(int, _get_drawer_width, _set_drawer_width)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("SandwichDrawer")
         self._is_collapsed = False
         self._buttons: List[Tuple[QPushButton, BiologicalModel, str]] = []
-        self._active_button: QPushButton = None
+        self._active_button: Optional[QPushButton] = None
+        self._scroll_content: Optional[QWidget] = None
+        self.anim: Optional[QPropertyAnimation] = None
 
         self._optimal_expanded_width = self.DEFAULT_EXPANDED_WIDTH
         self._min_expanded_width = self.MIN_EXPANDED_WIDTH
@@ -82,8 +98,8 @@ class SandwichDrawer(QFrame):
         self.scroll_area.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        scroll_content = QWidget()
-        content_layout = QVBoxLayout(scroll_content)
+        self._scroll_content = QWidget()
+        content_layout = QVBoxLayout(self._scroll_content)
         content_layout.setContentsMargins(0, 8, 0, 16)
         content_layout.setSpacing(0)
 
@@ -110,7 +126,7 @@ class SandwichDrawer(QFrame):
                 self._buttons.append((btn, model, "continuous"))
 
         content_layout.addStretch()
-        self.scroll_area.setWidget(scroll_content)
+        self.scroll_area.setWidget(self._scroll_content)
         layout.addWidget(self.scroll_area)
 
         # Initial selection
@@ -165,15 +181,10 @@ class SandwichDrawer(QFrame):
         self._expanded_width = target_w
         if not self._is_collapsed:
             if (
-                hasattr(self, "anim")
+                self.anim
                 and self.anim.state() == QPropertyAnimation.State.Running
             ):
                 self.anim.stop()
-            if (
-                hasattr(self, "anim_min")
-                and self.anim_min.state() == QPropertyAnimation.State.Running
-            ):
-                self.anim_min.stop()
             self.setFixedWidth(target_w)
 
     def _handle_selection(self, model: BiologicalModel, mode: str):
@@ -196,23 +207,43 @@ class SandwichDrawer(QFrame):
         btn.style().polish(btn)
 
     def toggle_collapse(self):
-        """Toggle side drawer width between 0 and active expanded width."""
+        """Toggle side drawer width smoothly between 0 and expanded width."""
         self._is_collapsed = not self._is_collapsed
         target_width = 0 if self._is_collapsed else self._expanded_width
 
-        self.anim = QPropertyAnimation(self, b"maximumWidth")
-        self.anim.setDuration(200)
+        if (
+            self.anim
+            and self.anim.state() == QPropertyAnimation.State.Running
+        ):
+            self.anim.stop()
+
+        # Stabilize inner content layout and suppress scrollbar flickering
+        # during the animation transition
+        if self._scroll_content:
+            self._scroll_content.setFixedWidth(self._expanded_width)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.anim = QPropertyAnimation(self, b"drawerWidth")
+        self.anim.setDuration(260)
         self.anim.setStartValue(self.width())
         self.anim.setEndValue(target_width)
-        self.anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.anim.finished.connect(self._on_animation_finished)
         self.anim.start()
 
-        self.anim_min = QPropertyAnimation(self, b"minimumWidth")
-        self.anim_min.setDuration(200)
-        self.anim_min.setStartValue(self.width())
-        self.anim_min.setEndValue(target_width)
-        self.anim_min.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self.anim_min.start()
+    def _on_animation_finished(self):
+        """Restore normal scrolling and flexibility after slide completes."""
+        if not self._is_collapsed:
+            if self._scroll_content:
+                self._scroll_content.setMinimumWidth(0)
+                self._scroll_content.setMaximumWidth(16777215)
+            self.scroll_area.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAsNeeded
+            )
+        else:
+            self.setFixedWidth(0)
 
     @property
     def is_collapsed(self) -> bool:

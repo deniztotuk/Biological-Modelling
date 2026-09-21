@@ -17,7 +17,7 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
 )
 from matplotlib.figure import Figure
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -46,6 +46,11 @@ class BioPlotCanvas(QWidget):
         self.theme = theme
         self._current_result: Optional[SimulationResult] = None
         self._current_model: Optional[BiologicalModel] = None
+
+        self._resize_timer = QTimer(self)
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.setInterval(70)
+        self._resize_timer.timeout.connect(self._on_resize_debounced)
 
         self._init_ui()
 
@@ -474,8 +479,13 @@ class BioPlotCanvas(QWidget):
             return None
 
     def resizeEvent(self, event):
-        """Recompute tight layout dynamically on canvas resize."""
+        """Debounce layout recalculation during window and drawer resize."""
         super().resizeEvent(event)
+        if self._current_result is not None:
+            self._resize_timer.start()
+
+    def _on_resize_debounced(self):
+        """Execute tight layout once after resize or drawer animation ends."""
         if self._current_result is not None:
             try:
                 with warnings.catch_warnings():
