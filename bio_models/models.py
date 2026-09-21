@@ -370,7 +370,7 @@ class ConsumerResourceModel(BiologicalModel):
                 ),
             },
             "a_f": {
-                "label": "a_f (Exp decay coeff)",
+                "label": "a<sub>f</sub> (Exp decay coeff)",
                 "min": 0.001,
                 "max": 0.5,
                 "step": 0.005,
