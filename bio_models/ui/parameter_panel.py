@@ -42,6 +42,7 @@ class ParameterPanel(QWidget):
         self.model: Optional[BiologicalModel] = None
         self.mode: str = "continuous"
         self._param_inputs: Dict[str, QDoubleSpinBox] = {}
+        self._just_changed_index: bool = False
 
         self._init_ui()
 
@@ -152,18 +153,16 @@ class ParameterPanel(QWidget):
             self.preset_combo.currentIndexChanged.connect(
                 self._on_preset_changed
             )
+            self.preset_combo.activated.connect(
+                self._on_preset_activated
+            )
 
             self.preset_desc = QLabel(presets[0]["description"])
             self.preset_desc.setObjectName("PresetDescription")
             self.preset_desc.setWordWrap(True)
 
-            load_btn = QPushButton("Load Selected Scenario")
-            load_btn.setObjectName("PresetLoadBtn")
-            load_btn.clicked.connect(self._apply_current_preset)
-
             preset_layout.addWidget(self.preset_combo)
             preset_layout.addWidget(self.preset_desc)
-            preset_layout.addWidget(load_btn)
             self.content_layout.addWidget(preset_group)
 
         # 3. Modular Function Selector (Only for Modular Consumer-Resource)
@@ -339,9 +338,17 @@ class ParameterPanel(QWidget):
             self._update_relationship_badge()
 
     def _on_preset_changed(self, idx: int):
+        self._just_changed_index = True
         data = self.preset_combo.currentData()
         if data:
             self.preset_desc.setText(data.get("description", ""))
+            self._apply_current_preset()
+
+    def _on_preset_activated(self, idx: int):
+        if self._just_changed_index:
+            self._just_changed_index = False
+            return
+        self._on_preset_changed(idx)
 
     def _on_t_start_changed(self, val: float):
         if hasattr(self, "t_end_spin") and self.t_end_spin.value() <= val:

@@ -516,6 +516,37 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_auto_load_scenario_preset_and_no_button(self):
+        """Verify Load button is removed and combo auto-loads preset."""
+        from PyQt6.QtWidgets import QPushButton
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        # 1. Verify "Load Selected Scenario" button does not exist
+        load_buttons = [
+            btn for btn in window.param_panel.findChildren(QPushButton)
+            if "Load" in btn.text()
+        ]
+        self.assertEqual(len(load_buttons), 0)
+
+        # 2. Select scenario at index 1 ("Competitive Exclusion")
+        window.param_panel.preset_combo.setCurrentIndex(1)
+
+        # Verify initial states and parameters were automatically updated
+        inputs = window.param_panel.get_simulation_inputs()
+        self.assertEqual(inputs["initial_state"], (20, 25))
+        self.assertEqual(inputs["params"]["r1"], 0.9)
+        self.assertEqual(inputs["params"]["alpha21"], 1.2)
+
+        # Verify simulation was triggered automatically
+        res = window.canvas_widget._current_result
+        self.assertIsNotNone(res)
+        self.assertEqual(res.n1[0], 20.0)
+        self.assertEqual(res.n2[0], 25.0)
+
+        window.close()
+
     def test_pep8_compliance(self):
         """Verify that all codebase files strictly adhere to PEP 8."""
         import subprocess
