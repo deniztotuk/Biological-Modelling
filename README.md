@@ -18,7 +18,7 @@ The application models **Lotka-Volterra Competition & Multi-Species Interactions
 - **Dynamic Parameter & Scenario Panel:**
   - Interactive inputs with real-time badges (e.g. automatic relationship classification for mutualism, competition, parasitism, commensalism).
   - Preloaded biological scenarios (Stable Coexistence, Competitive Exclusion, Neutral Cycles, Paradox of Enrichment Limit Cycles, Chemostat Equilibria).
-  - Continuous ODE solving (adaptive **Runge-Kutta RK45** and **LSODA**) and discrete-time recursion.
+  - Continuous ODE numerical integration and discrete-time recursion.
 - **Dual-View Biological Graphs:**
   - **Left:** Population dynamics over time ($n_1(t)$ and $n_2(t)$ vs $t$).
   - **Right:** Phase space portrait ($n_2$ vs $n_1$) displaying trajectory, start ($\bullet$) and end ($\times$) states, flow direction arrows, and zero-growth isoclines (nullclines).

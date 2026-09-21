@@ -151,8 +151,7 @@ def simulate_model(
             },
             success=True,
             message=(
-                f"Solved {len(sol.t)} time points in {elapsed_ms:.1f} ms "
-                f"using {ode_method}"
+                f"Solved {len(sol.t)} time points in {elapsed_ms:.1f} ms"
             ),
         )
 

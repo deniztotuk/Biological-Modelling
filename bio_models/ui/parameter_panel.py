@@ -119,7 +119,7 @@ class ParameterPanel(QWidget):
         badge_layout.setContentsMargins(0, 0, 0, 0)
         badge_layout.setSpacing(6)
         mode_text = (
-            "Continuous ODE (Runge-Kutta RK45)"
+            "Continuous ODE"
             if self.mode == "continuous"
             else "Discrete Recursion"
         )
