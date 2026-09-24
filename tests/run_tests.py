@@ -739,6 +739,40 @@ class TestGUIComponents(unittest.TestCase):
         self.assertFalse(export_btn.icon().isNull())
         window.close()
 
+    def test_model_info_button(self):
+        """Verify model info circle button displays equations & scenarios."""
+        from bio_models.models import LotkaVolterraPredatorPreyModel
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        param_panel = window.param_panel
+        info_btn = param_panel.info_btn
+
+        self.assertIsNotNone(info_btn)
+        self.assertFalse(info_btn.icon().isNull())
+
+        # Continuous mode: must mention differential equations
+        tooltip_cont = info_btn._info_html
+        self.assertIn("Differential Equations", tooltip_cont)
+        self.assertIn("dn₁/dt", tooltip_cont)
+        self.assertIn("Biological Scenarios", tooltip_cont)
+
+        # Toggle to discrete mode: must update to difference equations
+        param_panel._toggle_mode()
+        tooltip_disc = info_btn._info_html
+        self.assertIn("Difference Equations", tooltip_disc)
+        self.assertIn("n₁(t+1)", tooltip_disc)
+        self.assertIn("Biological Scenarios", tooltip_disc)
+
+        # Switch model: check updated info
+        pred_model = LotkaVolterraPredatorPreyModel()
+        param_panel.set_model(pred_model, mode="continuous")
+        tooltip_pred = param_panel.info_btn._info_html
+        self.assertIn("Classic Lotka-Volterra Predator-Prey", tooltip_pred)
+        self.assertIn("Differential Equations", tooltip_pred)
+
+        window.close()
+
     def test_pep8_compliance(self):
         """Verify that all codebase files strictly adhere to PEP 8."""
         import subprocess

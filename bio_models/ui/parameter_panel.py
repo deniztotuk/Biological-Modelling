@@ -4,7 +4,7 @@ Generates input fields, preset selectors, and simulation controls.
 """
 
 from typing import Any, Dict, Optional
-from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QPoint, QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -18,17 +18,58 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSpinBox,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
 
+from bio_models.model_info import get_model_info_html
 from bio_models.models import (
     BiologicalModel,
     ConsumerResourceModel,
     LotkaVolterraCompetitionModel,
 )
 from bio_models.presets import PRESETS
-from bio_models.ui.styles import get_play_icon
+from bio_models.ui.styles import get_info_icon, get_play_icon
+
+
+class ModelInfoButton(QPushButton):
+    """Small circular info badge displaying model equations and scenarios."""
+
+    def __init__(self, theme: str = "dark", parent=None):
+        super().__init__(parent)
+        self.setObjectName("ModelInfoButton")
+        self.theme = theme
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedSize(18, 18)
+        self._info_html = ""
+        self.update_icon()
+        self.clicked.connect(self._show_info)
+
+    def update_icon(self):
+        self.setIcon(get_info_icon(self.theme))
+        self.setIconSize(QSize(16, 16))
+
+    def set_theme(self, theme: str):
+        self.theme = theme
+        self.update_icon()
+
+    def set_info_html(self, html: str):
+        self._info_html = html
+        self.setToolTip(html)
+
+    def _show_info(self):
+        if self._info_html:
+            p = self.mapToGlobal(QPoint(self.width() + 6, -10))
+            QToolTip.showText(p, self._info_html, self)
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._show_info()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        QToolTip.hideText()
 
 
 class ParameterPanel(QWidget):
@@ -49,6 +90,7 @@ class ParameterPanel(QWidget):
         self.mode_badge: Optional[QPushButton] = None
         self.start_time_lbl: Optional[QLabel] = None
         self.end_time_lbl: Optional[QLabel] = None
+        self.info_btn: Optional[ModelInfoButton] = None
 
         self._init_ui()
 
@@ -90,6 +132,12 @@ class ParameterPanel(QWidget):
         self.theme = theme
         if hasattr(self, "run_btn"):
             self.run_btn.setIcon(get_play_icon(self.theme))
+        if self.info_btn is not None:
+            self.info_btn.set_theme(self.theme)
+            if self.model:
+                self.info_btn.set_info_html(
+                    get_model_info_html(self.model.name, self.mode, self.theme)
+                )
 
     def set_model(self, model: BiologicalModel, mode: str = "continuous"):
         self.model = model
@@ -194,12 +242,30 @@ class ParameterPanel(QWidget):
                 self._on_preset_activated
             )
 
+            desc_row = QWidget()
+            desc_layout = QHBoxLayout(desc_row)
+            desc_layout.setContentsMargins(0, 0, 0, 0)
+            desc_layout.setSpacing(6)
+
             self.preset_desc = QLabel(presets[0]["description"])
             self.preset_desc.setObjectName("PresetDescription")
             self.preset_desc.setWordWrap(True)
 
+            self.info_btn = ModelInfoButton(theme=self.theme)
+            info_html = get_model_info_html(
+                self.model.name, self.mode, self.theme
+            )
+            self.info_btn.set_info_html(info_html)
+
+            desc_layout.addWidget(self.preset_desc, stretch=1)
+            desc_layout.addWidget(
+                self.info_btn,
+                alignment=Qt.AlignmentFlag.AlignTop
+                | Qt.AlignmentFlag.AlignRight,
+            )
+
             preset_layout.addWidget(self.preset_combo)
-            preset_layout.addWidget(self.preset_desc)
+            preset_layout.addWidget(desc_row)
             self.content_layout.addWidget(preset_group)
 
         # 3. Modular Function Selector (Only for Modular Consumer-Resource)
@@ -468,6 +534,11 @@ class ParameterPanel(QWidget):
                 "End Step (t<sub>end</sub>):"
                 if self.mode == "discrete"
                 else "End Time (t<sub>end</sub>):"
+            )
+
+        if self.info_btn is not None and self.model is not None:
+            self.info_btn.set_info_html(
+                get_model_info_html(self.model.name, self.mode, self.theme)
             )
 
         self.simulate_requested.emit()

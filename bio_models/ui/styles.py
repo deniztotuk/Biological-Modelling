@@ -17,6 +17,8 @@ _PLAY_LIGHT = f"{_ICONS_DIR}/play_light.svg"
 _PLAY_DARK = f"{_ICONS_DIR}/play_dark.svg"
 _SAVE_LIGHT = f"{_ICONS_DIR}/save_light.svg"
 _SAVE_DARK = f"{_ICONS_DIR}/save_dark.svg"
+_INFO_LIGHT = f"{_ICONS_DIR}/info_light.svg"
+_INFO_DARK = f"{_ICONS_DIR}/info_dark.svg"
 
 
 def _ensure_icons():
@@ -79,6 +81,22 @@ def _ensure_icons():
             'cy="8.2" r="2.2" fill="none" stroke="#e4e4e7" '
             'stroke-width="1.4"/></svg>'
         ),
+        _INFO_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" '
+            'viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.5" '
+            'stroke="#64748b" stroke-width="1.5"/><circle cx="10" cy="6.2" '
+            'r="1.1" fill="#64748b"/><path d="M10 9v5m-1 0h2" '
+            'stroke="#64748b" stroke-width="1.5" stroke-linecap="round" '
+            'stroke-linejoin="round"/></svg>'
+        ),
+        _INFO_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" '
+            'viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.5" '
+            'stroke="#a1a1aa" stroke-width="1.5"/><circle cx="10" cy="6.2" '
+            'r="1.1" fill="#a1a1aa"/><path d="M10 9v5m-1 0h2" '
+            'stroke="#a1a1aa" stroke-width="1.5" stroke-linecap="round" '
+            'stroke-linejoin="round"/></svg>'
+        ),
     }
     for path, content in icons.items():
         if not os.path.exists(path):
@@ -97,6 +115,13 @@ def get_save_icon(theme: str = "dark") -> QIcon:
     """Return modern vector save/camera icon for the active theme."""
     _ensure_icons()
     path = _SAVE_LIGHT if theme == "light" else _SAVE_DARK
+    return QIcon(path)
+
+
+def get_info_icon(theme: str = "dark") -> QIcon:
+    """Return modern vector info circle icon for the active theme."""
+    _ensure_icons()
+    path = _INFO_LIGHT if theme == "light" else _INFO_DARK
     return QIcon(path)
 
 
@@ -513,6 +538,30 @@ QPushButton#SaveJpegButton:hover {
 QPushButton#SaveGraphButton:pressed,
 QPushButton#SaveJpegButton:pressed {
     background-color: #e2e8f0;
+}
+
+QPushButton#ModelInfoButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 9px;
+    padding: 0px;
+    min-width: 18px;
+    max-width: 18px;
+    min-height: 18px;
+    max-height: 18px;
+}
+
+QPushButton#ModelInfoButton:hover {
+    background-color: #e2e8f0;
+}
+
+QToolTip {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
 }
 
 QPushButton#PresetButton {
@@ -1045,6 +1094,30 @@ QPushButton#SaveGraphButton:pressed,
 QPushButton#SaveJpegButton:pressed {
     background-color: #18181b;
     border: 1px solid #333338;
+}
+
+QPushButton#ModelInfoButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 9px;
+    padding: 0px;
+    min-width: 18px;
+    max-width: 18px;
+    min-height: 18px;
+    max-height: 18px;
+}
+
+QPushButton#ModelInfoButton:hover {
+    background-color: #27272a;
+}
+
+QToolTip {
+    background-color: #1c1c1f;
+    color: #f4f4f5;
+    border: 1px solid #3f3f46;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
 }
 
 QPushButton#PresetButton {
