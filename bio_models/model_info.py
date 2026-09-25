@@ -219,7 +219,7 @@ MODEL_DETAILS: Dict[str, Dict[str, Any]] = {
             "• <b>Overcapacity Damping</b>: Populations introduced above "
             "carrying capacity (n &gt; K) experiencing resource shortages "
             "and declining back down to K.<br>"
-            "• <b>Discrete Overshoot & Chaos (May 1976)</b>: In discrete "
+            "• <b>Discrete Overshoot & Chaos</b>: In discrete "
             "time, strong growth rates (r &gt; 2.0) generate delayed feedback "
             "overshoots, stable limit cycles, and deterministic chaos."
         ),

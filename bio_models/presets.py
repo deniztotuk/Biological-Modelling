@@ -334,34 +334,6 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
         {
-            "name": "Yeast Culture: Haploids (Mable & Otto 2001)",
-            "description": (
-                "Haploid Saccharomyces cerevisiae culture reaching carrying "
-                "capacity K = 370 (3.7 × 10⁸ cells) with r = 0.55 /hr (Mable "
-                "& Otto 2001)."
-            ),
-            "initial": (10, 0),
-            "t_span": (0.0, 35.0),
-            "params": {
-                "r": 0.55,
-                "K": 370,
-            },
-        },
-        {
-            "name": "Yeast Culture: Diploids (Mable & Otto 2001)",
-            "description": (
-                "Diploid Saccharomyces cerevisiae culture: larger cells "
-                "require more resources, yielding lower carrying capacity "
-                "K = 230 (2.3 × 10⁸ cells)."
-            ),
-            "initial": (10, 0),
-            "t_span": (0.0, 35.0),
-            "params": {
-                "r": 0.55,
-                "K": 230,
-            },
-        },
-        {
             "name": "Overcapacity Crash & Damping",
             "description": (
                 "Population starts above carrying capacity (n > K) and "
@@ -375,11 +347,10 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
         {
-            "name": "Discrete Chaos & Limit Cycles (May 1976)",
+            "name": "Discrete Chaos & Limit Cycles",
             "description": (
                 "In discrete recursion, strong growth rates (r > 2.0) "
-                "generate period-doubling overshoots, limit cycles, and chaos "
-                "(Robert May 1976)."
+                "generate period-doubling overshoots, limit cycles, and chaos."
             ),
             "initial": (20, 0),
             "t_span": (0.0, 40.0),

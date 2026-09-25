@@ -351,12 +351,42 @@ class TestBioModels(unittest.TestCase):
         self.assertTrue(res_over.n1[0] > 100.0)
         self.assertAlmostEqual(res_over.n1[-1], 100.0, delta=0.5)
 
-        # 3. Discrete recursion: Mable & Otto (2001) Yeast Culture parameters
-        # r = 0.55, K = 370
+        # 3. Discrete recursion
         curr = np.array([10.0])
         for _ in range(30):
             curr = model.discrete_step(curr, {"r": 0.55, "K": 370.0})
         self.assertAlmostEqual(curr[0], 370.0, delta=1.0)
+
+    def test_logistic_growth_presets_and_names(self):
+        """Verify yeast presets removed and May 1976 removed from names."""
+        from bio_models.presets import PRESETS
+        from bio_models.model_info import MODEL_DETAILS
+
+        presets = PRESETS.get("Logistic Growth Model", [])
+        preset_names = [p["name"] for p in presets]
+
+        # 1. Verify yeast culture presets are removed from logistic model
+        for name in preset_names:
+            self.assertNotIn("Yeast", name)
+            self.assertNotIn("Haploid", name)
+            self.assertNotIn("Diploid", name)
+
+        # 2. Verify remaining presets
+        self.assertIn("Sigmoidal Carrying Capacity Approach", preset_names)
+        self.assertIn("Overcapacity Crash & Damping", preset_names)
+        self.assertIn("Discrete Chaos & Limit Cycles", preset_names)
+
+        # 3. Verify (May 1976) reference is removed from chaotic growth's name
+        self.assertNotIn(
+            "Discrete Chaos & Limit Cycles (May 1976)", preset_names
+        )
+        for name in preset_names:
+            self.assertNotIn("May 1976", name)
+
+        # 4. Verify model info scenarios heading does not contain (May 1976)
+        scenarios = MODEL_DETAILS["Logistic Growth Model"]["scenarios"]
+        self.assertIn("<b>Discrete Overshoot & Chaos</b>", scenarios)
+        self.assertNotIn("Discrete Overshoot & Chaos (May 1976)", scenarios)
 
     def test_discrete_ladder_step_counts_and_exponential_benchmark(self):
         """Verify discrete simulation produces exact step count & ladder."""
