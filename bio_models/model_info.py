@@ -164,6 +164,66 @@ MODEL_DETAILS: Dict[str, Dict[str, Any]] = {
             "filtration, host-parasitoid dynamics, and multi-trophic balance."
         ),
     },
+    "Exponential Growth Model": {
+        "title": "Exponential Population Growth Model",
+        "diff_eq_type": "Ordinary Differential Equation",
+        "diff_eq": [
+            "dn/dt = r·n",
+            "(where r = b - d: per capita birth rate - death rate)",
+        ],
+        "disc_eq_type": "Discrete Difference Equation (Recursion)",
+        "disc_eq": [
+            "n(t+1) = R·n(t)",
+            "(where R = 1 + r_d = (1 - d)·(1 + b))",
+        ],
+        "scenarios": (
+            "Models unrestricted population growth in an ideal, limitless "
+            "environment where resource availability per individual is "
+            "constant regardless of population size (Otto & Day 2007). "
+            "Primary biological scenarios include:<br>"
+            "• <b>Colonization & Island Expansion</b>: Rapid population boom "
+            "following introduction into unexploited habitats (e.g. "
+            "Protection Island pheasants, Lack 1954).<br>"
+            "• <b>Microbial / Bacterial Fission</b>: Constant binary fission "
+            "rate under continuous nutrient excess in culture blooms.<br>"
+            "• <b>Population Decline / Extinction</b>: Per capita death rate "
+            "exceeding birth rate (d &gt; b, r &lt; 0, R &lt; 1) causing "
+            "exponential decay toward zero.<br>"
+            "• <b>Generational Replacement</b>: Perfect demographic balance "
+            "(b = d, R = 1, r = 0) maintaining a stationary population."
+        ),
+    },
+    "Logistic Growth Model": {
+        "title": "Logistic Population Growth Model",
+        "diff_eq_type": "Ordinary Differential Equation",
+        "diff_eq": [
+            "dn/dt = r·n·(1 - n / K)",
+            "(where r is intrinsic growth rate and K is carrying capacity)",
+        ],
+        "disc_eq_type": "Discrete Difference Equation (Recursion)",
+        "disc_eq": [
+            "n(t+1) = n(t) + r_d·n(t)·(1 - n(t) / K)",
+            "(where r_d is discrete growth rate and K is carrying capacity)",
+        ],
+        "scenarios": (
+            "Incorporates density-dependent regulation where resource "
+            "limitation and intraspecific competition linearly reduce per "
+            "capita growth as density approaches carrying capacity K "
+            "(Otto & Day 2007). Primary biological scenarios include:<br>"
+            "• <b>Sigmoidal Carrying Capacity Approach</b>: Classic S-shaped "
+            "curve with initial exponential growth transitioning into "
+            "asymptotic saturation at K.<br>"
+            "• <b>Cell Culture Growth (Mable & Otto 2001)</b>: Haploid vs. "
+            "diploid yeast cultures reaching distinct carrying capacities "
+            "based on cell volume and nutrient demand.<br>"
+            "• <b>Overcapacity Damping</b>: Populations introduced above "
+            "carrying capacity (n &gt; K) experiencing resource shortages "
+            "and declining back down to K.<br>"
+            "• <b>Discrete Overshoot & Chaos (May 1976)</b>: In discrete "
+            "time, strong growth rates (r &gt; 2.0) generate delayed feedback "
+            "overshoots, stable limit cycles, and deterministic chaos."
+        ),
+    },
 }
 
 

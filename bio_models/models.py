@@ -52,6 +52,16 @@ class BiologicalModel(ABC):
         pass
 
     @property
+    def num_variables(self) -> int:
+        """Number of state variables in the system (1 or 2). Defaults to 2."""
+        return 2
+
+    @property
+    def is_single_variable(self) -> bool:
+        """Return True if model describes a single-species system."""
+        return self.num_variables == 1
+
+    @property
     @abstractmethod
     def default_params(self) -> Dict[str, float]:
         """Default parameter values."""
@@ -732,9 +742,170 @@ class TypeIIIPredatorPreyModel(ConsumerResourceModel):
         return "Predator Population (n₂)"
 
 
+# -------------------------------------------------------------------------
+# Single-Species Population Growth Models (Otto & Day 2007, Chapter 3)
+# -------------------------------------------------------------------------
+class ExponentialGrowthModel(BiologicalModel):
+    """
+    Classic exponential population growth model (Otto & Day 2007, Sec. 3.2.1).
+    Continuous differential equation:
+        dn/dt = r * n
+    Discrete recursion equation:
+        n(t+1) = (1 + r) * n(t) = R * n(t)
+    """
+
+    @property
+    def name(self) -> str:
+        return "Exponential Growth Model"
+
+    @property
+    def category(self) -> str:
+        return "Single-Species Population Growth"
+
+    @property
+    def num_variables(self) -> int:
+        return 1
+
+    @property
+    def n1_label(self) -> str:
+        return "Population Density (n)"
+
+    @property
+    def n2_label(self) -> str:
+        return ""
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        return {"r": 0.5}
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        return {
+            "r": {
+                "label": "Growth rate (r):",
+                "min": -2.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Intrinsic per capita growth rate (r = b - d)"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Continuous differential equation: dn/dt = r * n."""
+        n = max(0.0, float(state[0]))
+        r = params.get("r", 0.5)
+        dn_dt = r * n
+        if len(state) > 1:
+            return np.array([dn_dt, 0.0], dtype=float)
+        return np.array([dn_dt], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: n(t+1) = (1 + r) * n(t) = R * n(t)."""
+        n = max(0.0, float(state[0]))
+        r = params.get("r", 0.5)
+        n_next = max(0.0, (1.0 + r) * n)
+        if len(state) > 1:
+            return np.array([n_next, 0.0], dtype=float)
+        return np.array([n_next], dtype=float)
+
+
+class LogisticGrowthModel(BiologicalModel):
+    """
+    Classic logistic population growth model (Otto & Day 2007, Sec. 3.2.2).
+    Continuous differential equation:
+        dn/dt = r * n * (1 - n / K)
+    Discrete recursion equation:
+        n(t+1) = n(t) + r * n(t) * (1 - n(t) / K)
+    """
+
+    @property
+    def name(self) -> str:
+        return "Logistic Growth Model"
+
+    @property
+    def category(self) -> str:
+        return "Single-Species Population Growth"
+
+    @property
+    def num_variables(self) -> int:
+        return 1
+
+    @property
+    def n1_label(self) -> str:
+        return "Population Density (n)"
+
+    @property
+    def n2_label(self) -> str:
+        return ""
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        return {
+            "r": 0.6,
+            "K": 100.0,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        return {
+            "r": {
+                "label": "Growth rate (r):",
+                "min": -2.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Intrinsic per capita growth rate when "
+                    "density is near zero"
+                ),
+            },
+            "K": {
+                "label": "Carrying cap. (K):",
+                "min": 1,
+                "max": 100000,
+                "step": 10,
+                "is_int": True,
+                "description": (
+                    "Maximum population size sustainable by resources"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Continuous differential equation: dn/dt = r * n * (1 - n / K)."""
+        n = max(0.0, float(state[0]))
+        r = params.get("r", 0.6)
+        k = max(1.0, params.get("K", 100.0))
+        dn_dt = r * n * (1.0 - n / k)
+        if len(state) > 1:
+            return np.array([dn_dt, 0.0], dtype=float)
+        return np.array([dn_dt], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: n(t+1) = n(t) + r * n(t) * (1 - n(t) / K)."""
+        n = max(0.0, float(state[0]))
+        r = params.get("r", 0.6)
+        k = max(1.0, params.get("K", 100.0))
+        n_next = max(0.0, n + r * n * (1.0 - n / k))
+        if len(state) > 1:
+            return np.array([n_next, 0.0], dtype=float)
+        return np.array([n_next], dtype=float)
+
+
 # Registry of available models for the sandwich menu
 AVAILABLE_MODELS: List[BiologicalModel] = [
     LotkaVolterraCompetitionModel(),
+    ExponentialGrowthModel(),
+    LogisticGrowthModel(),
     LotkaVolterraPredatorPreyModel(),
     ChemostatModel(),
     RosenzweigMacArthurModel(),

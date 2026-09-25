@@ -24,6 +24,8 @@ from bio_models.models import (  # noqa: E402
     AVAILABLE_MODELS,
     ChemostatModel,
     ConsumerResourceModel,
+    ExponentialGrowthModel,
+    LogisticGrowthModel,
     LotkaVolterraCompetitionModel,
     LotkaVolterraPredatorPreyModel,
     RosenzweigMacArthurModel,
@@ -274,6 +276,87 @@ class TestBioModels(unittest.TestCase):
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+
+    def test_exponential_growth_model_analytical_and_discrete(self):
+        """Verify Exponential Growth matches analytical and recursion."""
+        model = ExponentialGrowthModel()
+        self.assertEqual(model.num_variables, 1)
+        self.assertTrue(model.is_single_variable)
+
+        # 1. Analytical test: dn/dt = r * n => n(t) = n0 * exp(r * t)
+        n0 = 8.0
+        r = 1.10
+        res = simulate_model(
+            model=model,
+            initial_state=(n0, 0.0),
+            t_span=(0.0, 3.0),
+            num_points=100,
+            params={"r": r},
+            mode="continuous",
+        )
+        self.assertTrue(res.success)
+        expected_final = n0 * np.exp(r * 3.0)
+        self.assertAlmostEqual(res.n1[-1], expected_final, delta=0.5)
+
+        # 2. Discrete test: n(t+1) = (1 + r) * n(t) = R * n(t)
+        # Protection Island Pheasant benchmark (Lack 1954; Otto & Day 2007)
+        # R = 3.0 => r = 2.0. Generations: 8 -> 24 -> 72 -> 216
+        curr = np.array([8.0])
+        gen1 = model.discrete_step(curr, {"r": 2.0})[0]
+        self.assertAlmostEqual(gen1, 24.0)
+        gen2 = model.discrete_step(np.array([gen1]), {"r": 2.0})[0]
+        self.assertAlmostEqual(gen2, 72.0)
+        gen3 = model.discrete_step(np.array([gen2]), {"r": 2.0})[0]
+        self.assertAlmostEqual(gen3, 216.0)
+
+        # 3. Extinction decay test: r = -0.2 < 0
+        res_decay = simulate_model(
+            model=model,
+            initial_state=(100.0, 0.0),
+            t_span=(0.0, 20.0),
+            num_points=50,
+            params={"r": -0.2},
+            mode="continuous",
+        )
+        self.assertTrue(res_decay.n1[-1] < res_decay.n1[0])
+
+    def test_logistic_growth_model_saturation_and_discrete(self):
+        """Verify Logistic Growth saturation at K and discrete dynamics."""
+        model = LogisticGrowthModel()
+        self.assertEqual(model.num_variables, 1)
+        self.assertTrue(model.is_single_variable)
+
+        # 1. Continuous saturation at carrying capacity K = 100
+        res = simulate_model(
+            model=model,
+            initial_state=(5.0, 0.0),
+            t_span=(0.0, 40.0),
+            num_points=200,
+            params={"r": 0.6, "K": 100.0},
+            mode="continuous",
+        )
+        self.assertTrue(res.success)
+        self.assertAlmostEqual(res.n1[-1], 100.0, delta=0.5)
+
+        # 2. Overcapacity decline: n0 = 180 > K = 100
+        res_over = simulate_model(
+            model=model,
+            initial_state=(180.0, 0.0),
+            t_span=(0.0, 30.0),
+            num_points=150,
+            params={"r": 0.5, "K": 100.0},
+            mode="continuous",
+        )
+        self.assertTrue(res_over.success)
+        self.assertTrue(res_over.n1[0] > 100.0)
+        self.assertAlmostEqual(res_over.n1[-1], 100.0, delta=0.5)
+
+        # 3. Discrete recursion: Mable & Otto (2001) Yeast Culture parameters
+        # r = 0.55, K = 370
+        curr = np.array([10.0])
+        for _ in range(30):
+            curr = model.discrete_step(curr, {"r": 0.55, "K": 370.0})
+        self.assertAlmostEqual(curr[0], 370.0, delta=1.0)
 
 
 class TestGUIComponents(unittest.TestCase):
@@ -770,6 +853,46 @@ class TestGUIComponents(unittest.TestCase):
         tooltip_pred = param_panel.info_btn._info_html
         self.assertIn("Classic Lotka-Volterra Predator-Prey", tooltip_pred)
         self.assertIn("Differential Equations", tooltip_pred)
+
+        window.close()
+
+    def test_single_variable_gui_controls_and_canvas(self):
+        """Verify single-variable models in GUI: inputs, canvas, tooltips."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        for model_cls in (ExponentialGrowthModel, LogisticGrowthModel):
+            model = model_cls()
+            window._on_model_selected(model, "continuous")
+            QApplication.processEvents()
+
+            panel = window.param_panel
+            self.assertIsNotNone(panel.n1_init_spin)
+            # n2 spin must be None for single-species models
+            self.assertIsNone(panel.n2_init_spin)
+
+            # Continuous simulation check
+            res_cont = window.canvas_widget._current_result
+            self.assertIsNotNone(res_cont)
+            self.assertTrue(res_cont.success)
+            self.assertTrue(res_cont.metadata.get("is_single_variable"))
+
+            # Toggle to discrete mode
+            panel.mode_badge.click()
+            QApplication.processEvents()
+            self.assertEqual(panel.mode, "discrete")
+
+            res_disc = window.canvas_widget._current_result
+            self.assertIsNotNone(res_disc)
+            self.assertTrue(res_disc.success)
+            self.assertEqual(res_disc.metadata.get("mode"), "discrete")
+
+            # Check model info tooltip contents
+            info_html = panel.info_btn._info_html
+            self.assertIn("Discrete Difference", info_html)
+            self.assertIn("Biological Scenarios", info_html)
 
         window.close()
 

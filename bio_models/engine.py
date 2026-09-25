@@ -40,7 +40,11 @@ def simulate_model(
 
     # Species individuals must be positive integers (>= 1)
     n1_init = float(max(1, int(round(float(initial_state[0])))))
-    n2_init = float(max(1, int(round(float(initial_state[1])))))
+    n2_init = (
+        0.0
+        if model.is_single_variable
+        else float(max(1, int(round(float(initial_state[1])))))
+    )
 
     if mode == "discrete":
         # Discrete iteration step by step
@@ -48,22 +52,32 @@ def simulate_model(
         t_arr = np.linspace(t_start, t_end, steps)
         n1_arr = np.zeros(steps)
         n2_arr = np.zeros(steps)
-        curr = np.array([n1_init, n2_init], dtype=float)
-        n1_arr[0] = curr[0]
-        n2_arr[0] = curr[1]
 
-        for i in range(1, steps):
-            try:
-                curr = model.discrete_step(curr, params)
-            except NotImplementedError:
-                # Approximate Euler step if discrete recursion
-                # is not explicitly defined
-                dt = 1.0
-                curr = curr + dt * model.rhs(float(i), curr, params)
-                curr[0] = max(0.0, curr[0])
-                curr[1] = max(0.0, curr[1])
-            n1_arr[i] = curr[0]
-            n2_arr[i] = curr[1]
+        if model.is_single_variable:
+            curr = np.array([n1_init], dtype=float)
+            n1_arr[0] = curr[0]
+            for i in range(1, steps):
+                try:
+                    curr = model.discrete_step(curr, params)
+                except NotImplementedError:
+                    dt = 1.0
+                    curr = curr + dt * model.rhs(float(i), curr, params)
+                    curr[0] = max(0.0, curr[0])
+                n1_arr[i] = curr[0]
+        else:
+            curr = np.array([n1_init, n2_init], dtype=float)
+            n1_arr[0] = curr[0]
+            n2_arr[0] = curr[1]
+            for i in range(1, steps):
+                try:
+                    curr = model.discrete_step(curr, params)
+                except NotImplementedError:
+                    dt = 1.0
+                    curr = curr + dt * model.rhs(float(i), curr, params)
+                    curr[0] = max(0.0, curr[0])
+                    curr[1] = max(0.0, curr[1])
+                n1_arr[i] = curr[0]
+                n2_arr[i] = curr[1]
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         return SimulationResult(
@@ -78,6 +92,7 @@ def simulate_model(
                 "mode": "discrete",
                 "steps": steps,
                 "elapsed_ms": elapsed_ms,
+                "is_single_variable": model.is_single_variable,
             },
             success=True,
             message=(
@@ -87,17 +102,24 @@ def simulate_model(
         )
 
     # Continuous integration via solve_ivp
-    def ode_system(t, y):
-        # Clip state to prevent non-physical negative numbers
-        # during solver steps
-        clipped = np.array([max(0.0, y[0]), max(0.0, y[1])], dtype=float)
-        return model.rhs(t, clipped, params)
+    if model.is_single_variable:
+        def ode_system(t, y):
+            clipped = np.array([max(0.0, y[0])], dtype=float)
+            return model.rhs(t, clipped, params)
+
+        y0 = [n1_init]
+    else:
+        def ode_system(t, y):
+            clipped = np.array([max(0.0, y[0]), max(0.0, y[1])], dtype=float)
+            return model.rhs(t, clipped, params)
+
+        y0 = [n1_init, n2_init]
 
     try:
         sol = solve_ivp(
             fun=ode_system,
             t_span=valid_t_span,
-            y0=[n1_init, n2_init],
+            y0=y0,
             t_eval=t_eval,
             method=ode_method,
             rtol=1e-6,
@@ -109,7 +131,7 @@ def simulate_model(
             sol = solve_ivp(
                 fun=ode_system,
                 t_span=valid_t_span,
-                y0=[n1_init, n2_init],
+                y0=y0,
                 t_eval=t_eval,
                 method="LSODA",
                 rtol=1e-6,
@@ -127,13 +149,21 @@ def simulate_model(
                 n1_label=model.n1_label,
                 n2_label=model.n2_label,
                 parameters=params,
-                metadata={"elapsed_ms": elapsed_ms, "solver": ode_method},
+                metadata={
+                    "elapsed_ms": elapsed_ms,
+                    "solver": ode_method,
+                    "is_single_variable": model.is_single_variable,
+                },
                 success=False,
                 message=f"Solver error: {sol.message}",
             )
 
         n1_res = np.maximum(0.0, sol.y[0])
-        n2_res = np.maximum(0.0, sol.y[1])
+        n2_res = (
+            np.zeros_like(n1_res)
+            if model.is_single_variable
+            else np.maximum(0.0, sol.y[1])
+        )
 
         return SimulationResult(
             t=sol.t,
@@ -148,6 +178,7 @@ def simulate_model(
                 "solver": ode_method,
                 "nfev": sol.nfev,
                 "elapsed_ms": elapsed_ms,
+                "is_single_variable": model.is_single_variable,
             },
             success=True,
             message=(

@@ -220,6 +220,296 @@ class BioPlotCanvas(QWidget):
             self.canvas.draw()
             return
 
+        if model.is_single_variable:
+            self._update_plot_single_variable(result, model, colors)
+        else:
+            self._update_plot_two_variable(result, model, colors)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self.figure.tight_layout(
+                pad=2.2, w_pad=4.5, rect=(0.02, 0.0, 1.0, 1.0)
+            )
+            self.canvas.draw()
+
+        if model.is_single_variable:
+            if "K" in result.parameters:
+                k_int = int(round(result.parameters["K"]))
+                self.info_lbl.setText(
+                    f"{result.message} | Final: n={result.n1[-1]:.2f} "
+                    f"(K={k_int})"
+                )
+            else:
+                self.info_lbl.setText(
+                    f"{result.message} | Final: n={result.n1[-1]:.2f}"
+                )
+        else:
+            self.info_lbl.setText(
+                f"{result.message} | Final: n₁={result.n1[-1]:.2f}, "
+                f"n₂={result.n2[-1]:.2f}"
+            )
+
+    def _update_plot_single_variable(
+        self,
+        result: SimulationResult,
+        model: BiologicalModel,
+        colors: dict,
+    ) -> None:
+        """Render single-species dynamics: time-series and 1D phase space."""
+        t = result.t
+        n1 = result.n1
+        c1 = colors["n1"]
+        traj_color = colors["trajectory"]
+        params = result.parameters
+        is_disc = result.metadata.get("mode") == "discrete"
+
+        # -------------------------------------------------------------
+        # 1. Left Subplot: Population Dynamics Over Time
+        # -------------------------------------------------------------
+        self.ax_time.plot(
+            t, n1, color=c1, linewidth=2.2, label=result.n1_label
+        )
+        self.ax_time.fill_between(t, n1, color=c1, alpha=0.12)
+
+        # Plot carrying capacity line if available
+        if "K" in params:
+            k_val = params["K"]
+            self.ax_time.axhline(
+                k_val,
+                color=colors["isocline1"],
+                linestyle=":",
+                linewidth=1.6,
+                alpha=0.85,
+                label=f"Carrying Cap. (K={int(round(k_val))})",
+            )
+            y_max = max(1.0, max(np.max(n1), k_val) * 1.15)
+        else:
+            y_max = max(1.0, np.max(n1) * 1.15)
+
+        self.ax_time.set_title(
+            "Population Dynamics",
+            fontsize=10.5,
+            fontweight="bold",
+            color=colors["text_color"],
+            pad=10,
+        )
+        time_unit = "Time Steps (discrete)" if is_disc else "Time (t)"
+        self.ax_time.set_xlabel(
+            time_unit,
+            fontsize=10,
+            fontweight="bold",
+            color=colors["subtext_color"],
+        )
+        self.ax_time.set_ylabel(
+            "Population Density (n)",
+            fontsize=10,
+            fontweight="bold",
+            color=colors["subtext_color"],
+        )
+        self.ax_time.set_xlim(left=t[0], right=t[-1])
+        self.ax_time.set_ylim(bottom=0, top=y_max)
+        self.ax_time.grid(
+            True, linestyle="--", alpha=0.5, color=colors["grid"]
+        )
+
+        leg_time = self.ax_time.legend(
+            frameon=True,
+            facecolor=colors["legend_face"],
+            edgecolor=colors["legend_edge"],
+            fontsize=9,
+            loc="upper right",
+        )
+        for text in leg_time.get_texts():
+            text.set_color(colors["text_color"])
+
+        # -------------------------------------------------------------
+        # 2. Right Subplot: 1D Phase Dynamics / Return Map
+        # -------------------------------------------------------------
+        grid_max = max(10.0, float(np.max(n1)) * 1.25)
+        if "K" in params:
+            grid_max = max(grid_max, float(params["K"]) * 1.25)
+        n_grid = np.linspace(0.0, grid_max, 250)
+
+        if is_disc:
+            # Discrete Return Map: n(t+1) vs n(t)
+            next_grid = np.array([
+                model.discrete_step(np.array([val]), params)[0]
+                for val in n_grid
+            ])
+            self.ax_phase.plot(
+                n_grid,
+                n_grid,
+                linestyle="--",
+                color=colors["grid"],
+                linewidth=1.3,
+                label="1:1 Line (n(t+1) = n(t))",
+            )
+            self.ax_phase.plot(
+                n_grid,
+                next_grid,
+                color=c1,
+                linewidth=2.0,
+                label="Return Map n(t+1)",
+            )
+
+            # Observed trajectory steps
+            if len(n1) > 1:
+                self.ax_phase.plot(
+                    n1[:-1],
+                    n1[1:],
+                    color=traj_color,
+                    linewidth=1.5,
+                    alpha=0.6,
+                    label="Iteration Trajectory",
+                )
+                self.ax_phase.scatter(
+                    [n1[0]],
+                    [n1[1]],
+                    color=colors["start"],
+                    s=80,
+                    zorder=6,
+                    edgecolors="black",
+                    linewidths=1.2,
+                    label=f"Start (n₀={int(round(n1[0]))})",
+                )
+                self.ax_phase.scatter(
+                    [n1[-2]],
+                    [n1[-1]],
+                    color=colors["end"],
+                    s=70,
+                    zorder=6,
+                    marker="X",
+                    edgecolors="black",
+                    linewidths=1.2,
+                    label=f"End (n={n1[-1]:.1f})",
+                )
+
+            self.ax_phase.set_title(
+                "Return Map: n(t+1) vs n(t)",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+            self.ax_phase.set_xlabel(
+                "Current Generation n(t)",
+                fontsize=10,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_ylabel(
+                "Next Generation n(t+1)",
+                fontsize=10,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            y_ceil = max(grid_max, float(np.max(next_grid)) * 1.1)
+            self.ax_phase.set_xlim(left=0, right=grid_max)
+            self.ax_phase.set_ylim(bottom=0, top=y_ceil)
+
+        else:
+            # Continuous Phase Space: dn/dt vs n
+            rate_grid = np.array([
+                model.rhs(0.0, np.array([val]), params)[0]
+                for val in n_grid
+            ])
+            self.ax_phase.axhline(
+                0.0,
+                linestyle="--",
+                color=colors["grid"],
+                linewidth=1.3,
+                label="Zero Growth (dn/dt = 0)",
+            )
+            self.ax_phase.plot(
+                n_grid,
+                rate_grid,
+                color=c1,
+                linewidth=2.0,
+                label="Growth Rate dn/dt",
+            )
+
+            # Mark equilibrium at K if available
+            if "K" in params:
+                k_val = params["K"]
+                self.ax_phase.scatter(
+                    [k_val],
+                    [0.0],
+                    color=colors["isocline1"],
+                    s=75,
+                    zorder=6,
+                    edgecolors="black",
+                    linewidths=1.2,
+                    label=f"Equilibrium (K={int(round(k_val))})",
+                )
+
+            # Trajectory on rate curve
+            traj_rates = np.array([
+                model.rhs(0.0, np.array([val]), params)[0]
+                for val in n1
+            ])
+            self.ax_phase.scatter(
+                [n1[0]],
+                [traj_rates[0]],
+                color=colors["start"],
+                s=80,
+                zorder=6,
+                edgecolors="black",
+                linewidths=1.2,
+                label=f"Start (n₀={int(round(n1[0]))})",
+            )
+            self.ax_phase.scatter(
+                [n1[-1]],
+                [traj_rates[-1]],
+                color=colors["end"],
+                s=70,
+                zorder=6,
+                marker="X",
+                edgecolors="black",
+                linewidths=1.2,
+                label=f"End (n={n1[-1]:.1f})",
+            )
+
+            self.ax_phase.set_title(
+                "Growth Rate Curve (dn/dt)",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+            self.ax_phase.set_xlabel(
+                "Population Density (n)",
+                fontsize=10,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_ylabel(
+                "Net Rate of Change (dn/dt)",
+                fontsize=10,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_xlim(left=0, right=grid_max)
+
+        self.ax_phase.grid(
+            True, linestyle="--", alpha=0.5, color=colors["grid"]
+        )
+        leg_phase = self.ax_phase.legend(
+            frameon=True,
+            facecolor=colors["legend_face"],
+            edgecolor=colors["legend_edge"],
+            fontsize=8,
+            loc="upper right",
+        )
+        for text in leg_phase.get_texts():
+            text.set_color(colors["text_color"])
+
+    def _update_plot_two_variable(
+        self,
+        result: SimulationResult,
+        model: BiologicalModel,
+        colors: dict,
+    ) -> None:
+        """Render two-species dynamics: time-series and phase portrait."""
         t = result.t
         n1 = result.n1
         n2 = result.n2
@@ -402,15 +692,6 @@ class BioPlotCanvas(QWidget):
         for text in leg_phase.get_texts():
             text.set_color(colors["text_color"])
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            self.figure.tight_layout(pad=2.2, w_pad=4.0)
-            self.canvas.draw()
-
-        self.info_lbl.setText(
-            f"{result.message} | Final: n₁={n1[-1]:.2f}, n₂={n2[-1]:.2f}"
-        )
-
     def save_graph_as_jpeg(
         self, custom_path: Optional[str] = None
     ) -> Optional[str]:
@@ -495,7 +776,9 @@ class BioPlotCanvas(QWidget):
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", UserWarning)
-                    self.figure.tight_layout(pad=2.2, w_pad=4.0)
+                    self.figure.tight_layout(
+                        pad=2.2, w_pad=4.5, rect=(0.02, 0.0, 1.0, 1.0)
+                    )
                     self.canvas.draw_idle()
             except Exception:
                 pass

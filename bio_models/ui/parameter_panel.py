@@ -327,21 +327,37 @@ class ParameterPanel(QWidget):
         sim_layout.addWidget(QLabel(f"Initial {self.model.n1_label}:"), 0, 0)
         self.n1_init_spin = QSpinBox()
         self.n1_init_spin.setRange(1, 1000000)
-        self.n1_init_spin.setValue(25)
+        if self.model.name == "Exponential Growth Model":
+            default_n1 = 8
+            default_tend = 5.0
+        elif self.model.name == "Logistic Growth Model":
+            default_n1 = 5
+            default_tend = 20.0
+        else:
+            default_n1 = 25
+            default_tend = 50.0
+        self.n1_init_spin.setValue(default_n1)
         self.n1_init_spin.setSingleStep(1)
         self.n1_init_spin.setToolTip(
             "Initial population count (must be a positive integer ≥ 1)")
         sim_layout.addWidget(self.n1_init_spin, 0, 1)
 
-        # Initial n2 (Positive integers only: 1, 2, 3...)
-        sim_layout.addWidget(QLabel(f"Initial {self.model.n2_label}:"), 1, 0)
-        self.n2_init_spin = QSpinBox()
-        self.n2_init_spin.setRange(1, 1000000)
-        self.n2_init_spin.setValue(15)
-        self.n2_init_spin.setSingleStep(1)
-        self.n2_init_spin.setToolTip(
-            "Initial population count (must be a positive integer ≥ 1)")
-        sim_layout.addWidget(self.n2_init_spin, 1, 1)
+        row_idx = 1
+        if not self.model.is_single_variable:
+            # Initial n2 (Positive integers only: 1, 2, 3...)
+            sim_layout.addWidget(
+                QLabel(f"Initial {self.model.n2_label}:"), row_idx, 0
+            )
+            self.n2_init_spin = QSpinBox()
+            self.n2_init_spin.setRange(1, 1000000)
+            self.n2_init_spin.setValue(15)
+            self.n2_init_spin.setSingleStep(1)
+            self.n2_init_spin.setToolTip(
+                "Initial population count (must be a positive integer ≥ 1)")
+            sim_layout.addWidget(self.n2_init_spin, row_idx, 1)
+            row_idx += 1
+        else:
+            self.n2_init_spin = None
 
         # Initial Time (t_start / t0)
         start_label = (
@@ -350,7 +366,7 @@ class ParameterPanel(QWidget):
             else "Start Step (t<sub>start</sub>):"
         )
         self.start_time_lbl = QLabel(start_label)
-        sim_layout.addWidget(self.start_time_lbl, 2, 0)
+        sim_layout.addWidget(self.start_time_lbl, row_idx, 0)
         self.t_start_spin = QDoubleSpinBox()
         self.t_start_spin.setRange(-10000.0, 100000.0)
         self.t_start_spin.setValue(0.0)
@@ -360,7 +376,8 @@ class ParameterPanel(QWidget):
             "value)"
         )
         self.t_start_spin.valueChanged.connect(self._on_t_start_changed)
-        sim_layout.addWidget(self.t_start_spin, 2, 1)
+        sim_layout.addWidget(self.t_start_spin, row_idx, 1)
+        row_idx += 1
 
         # End Time (t_end / t_max)
         end_label = (
@@ -369,22 +386,23 @@ class ParameterPanel(QWidget):
             else "End Step (t<sub>end</sub>):"
         )
         self.end_time_lbl = QLabel(end_label)
-        sim_layout.addWidget(self.end_time_lbl, 3, 0)
+        sim_layout.addWidget(self.end_time_lbl, row_idx, 0)
         self.t_end_spin = QDoubleSpinBox()
         self.t_end_spin.setRange(-10000.0, 100000.0)
-        self.t_end_spin.setValue(50.0)
+        self.t_end_spin.setValue(default_tend)
         self.t_end_spin.setSingleStep(5.0)
         self.t_end_spin.setToolTip(
             "Final simulation time point (must be greater than start time)")
-        sim_layout.addWidget(self.t_end_spin, 3, 1)
+        sim_layout.addWidget(self.t_end_spin, row_idx, 1)
+        row_idx += 1
 
         # Sampling points
-        sim_layout.addWidget(QLabel("Output Resolution Points:"), 4, 0)
+        sim_layout.addWidget(QLabel("Output Resolution Points:"), row_idx, 0)
         self.points_spin = QSpinBox()
         self.points_spin.setRange(50, 5000)
         self.points_spin.setValue(500)
         self.points_spin.setSingleStep(50)
-        sim_layout.addWidget(self.points_spin, 4, 1)
+        sim_layout.addWidget(self.points_spin, row_idx, 1)
 
         self.content_layout.addWidget(sim_group)
 
@@ -465,8 +483,10 @@ class ParameterPanel(QWidget):
             return
 
         if "initial" in data:
-            self.n1_init_spin.setValue(int(round(data["initial"][0])))
-            self.n2_init_spin.setValue(int(round(data["initial"][1])))
+            init_vals = data["initial"]
+            self.n1_init_spin.setValue(int(round(init_vals[0])))
+            if len(init_vals) > 1 and self.n2_init_spin is not None:
+                self.n2_init_spin.setValue(int(round(init_vals[1])))
 
         if "t_span" in data:
             t_span = data["t_span"]
@@ -546,12 +566,17 @@ class ParameterPanel(QWidget):
     def get_simulation_inputs(self) -> Dict[str, Any]:
         """Extract all current user inputs from the UI."""
         params = {k: spin.value() for k, spin in self._param_inputs.items()}
+        n2_val = (
+            int(self.n2_init_spin.value())
+            if self.n2_init_spin is not None
+            else 0
+        )
         return {
             "model": self.model,
             "mode": self.mode,
             "initial_state": (
                 int(self.n1_init_spin.value()),
-                int(self.n2_init_spin.value()),
+                n2_val,
             ),
             "t_span": (self.t_start_spin.value(), self.t_end_spin.value()),
             "num_points": self.points_spin.value(),

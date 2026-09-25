@@ -265,4 +265,128 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
     ],
+    "Exponential Growth Model": [
+        {
+            "name": "Protection Island Pheasants (Lack 1954)",
+            "description": (
+                "Introduction of 8 pheasants onto Protection Island (1937), "
+                "tripling annually in an unconstrained habitat (Lack 1954; "
+                "Otto & Day 2007)."
+            ),
+            "initial": (8, 0),
+            "t_span": (0.0, 5.0),
+            "params": {
+                "r": 1.10,
+            },
+        },
+        {
+            "name": "Rapid Bacterial Binary Fission",
+            "description": (
+                "Exponential microbial reproduction doubling every generation "
+                "(doubling time t_d = ln(2)/r ≈ 1) under constant nutrient "
+                "excess."
+            ),
+            "initial": (10, 0),
+            "t_span": (0.0, 8.0),
+            "params": {
+                "r": 0.693,
+            },
+        },
+        {
+            "name": "Population Decline / Extinction Risk",
+            "description": (
+                "Per capita death rate exceeds birth rate (d > b, r < 0), "
+                "causing continuous exponential decline toward zero."
+            ),
+            "initial": (120, 0),
+            "t_span": (0.0, 25.0),
+            "params": {
+                "r": -0.15,
+            },
+        },
+        {
+            "name": "Stationary Replacement Equilibrium",
+            "description": (
+                "Exact demographic replacement where birth rate equals death "
+                "rate (b = d, r = 0, R = 1), maintaining stationary "
+                "population."
+            ),
+            "initial": (50, 0),
+            "t_span": (0.0, 30.0),
+            "params": {
+                "r": 0.0,
+            },
+        },
+    ],
+    "Logistic Growth Model": [
+        {
+            "name": "Sigmoidal Carrying Capacity Approach",
+            "description": (
+                "Classic S-shaped logistic curve exhibiting initial "
+                "exponential acceleration followed by density-dependent "
+                "deceleration toward K = 100."
+            ),
+            "initial": (5, 0),
+            "t_span": (0.0, 20.0),
+            "params": {
+                "r": 0.6,
+                "K": 100,
+            },
+        },
+        {
+            "name": "Yeast Culture: Haploids (Mable & Otto 2001)",
+            "description": (
+                "Haploid Saccharomyces cerevisiae culture reaching carrying "
+                "capacity K = 370 (3.7 × 10⁸ cells) with r = 0.55 /hr (Mable "
+                "& Otto 2001)."
+            ),
+            "initial": (10, 0),
+            "t_span": (0.0, 35.0),
+            "params": {
+                "r": 0.55,
+                "K": 370,
+            },
+        },
+        {
+            "name": "Yeast Culture: Diploids (Mable & Otto 2001)",
+            "description": (
+                "Diploid Saccharomyces cerevisiae culture: larger cells "
+                "require more resources, yielding lower carrying capacity "
+                "K = 230 (2.3 × 10⁸ cells)."
+            ),
+            "initial": (10, 0),
+            "t_span": (0.0, 35.0),
+            "params": {
+                "r": 0.55,
+                "K": 230,
+            },
+        },
+        {
+            "name": "Overcapacity Crash & Damping",
+            "description": (
+                "Population starts above carrying capacity (n > K) and "
+                "experiences negative net growth, decaying back down to K."
+            ),
+            "initial": (180, 0),
+            "t_span": (0.0, 20.0),
+            "params": {
+                "r": 0.5,
+                "K": 100,
+            },
+        },
+        {
+            "name": "Discrete Chaos & Limit Cycles (May 1976)",
+            "description": (
+                "In discrete recursion, strong growth rates (r > 2.0) "
+                "generate period-doubling overshoots, limit cycles, and chaos "
+                "(Robert May 1976)."
+            ),
+            "initial": (20, 0),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "r": 2.65,
+                "K": 100,
+            },
+        },
+    ],
 }
