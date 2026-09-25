@@ -358,6 +358,66 @@ class TestBioModels(unittest.TestCase):
             curr = model.discrete_step(curr, {"r": 0.55, "K": 370.0})
         self.assertAlmostEqual(curr[0], 370.0, delta=1.0)
 
+    def test_discrete_ladder_step_counts_and_exponential_benchmark(self):
+        """Verify discrete simulation produces exact step count & ladder."""
+        model = ExponentialGrowthModel()
+        # Initial: 16, r: 2.0 (R = 3.0), t: [0, 15] => 15 steps, 16 points
+        res = simulate_model(
+            model=model,
+            initial_state=(16.0, 0.0),
+            t_span=(0.0, 15.0),
+            params={"r": 2.0},
+            mode="discrete",
+        )
+        self.assertTrue(res.success)
+        self.assertEqual(len(res.t), 16)
+        self.assertEqual(res.metadata["steps"], 15)
+        self.assertTrue(np.allclose(res.t, np.arange(0, 16, dtype=float)))
+        self.assertAlmostEqual(res.n1[0], 16.0)
+        self.assertAlmostEqual(res.n1[1], 48.0)
+        self.assertAlmostEqual(res.n1[2], 144.0)
+        expected_final = 16.0 * (3.0 ** 15)
+        self.assertAlmostEqual(res.n1[-1], expected_final, delta=1.0)
+        self.assertIn("15 steps", res.message)
+
+        # Explicit num_points backward compatibility check
+        res_custom = simulate_model(
+            model=model,
+            initial_state=(10.0, 0.0),
+            t_span=(0.0, 10.0),
+            num_points=50,
+            params={"r": 0.5},
+            mode="discrete",
+        )
+        self.assertEqual(len(res_custom.t), 50)
+        self.assertEqual(res_custom.metadata["steps"], 49)
+
+    def test_all_models_discrete_simulation_and_ladder_properties(self):
+        """Verify discrete simulation across all available models."""
+        for model in AVAILABLE_MODELS:
+            init = (
+                (20.0, 10.0)
+                if not model.is_single_variable
+                else (20.0, 0.0)
+            )
+            res = simulate_model(
+                model=model,
+                initial_state=init,
+                t_span=(0.0, 15.0),
+                params=model.default_params,
+                mode="discrete",
+            )
+            self.assertTrue(
+                res.success, f"Discrete run failed: {model.name}"
+            )
+            self.assertEqual(len(res.t), 16)
+            self.assertEqual(res.metadata["steps"], 15)
+            self.assertTrue(np.all(np.isfinite(res.n1)))
+            self.assertTrue(np.all(res.n1 >= 0.0))
+            if not model.is_single_variable:
+                self.assertTrue(np.all(np.isfinite(res.n2)))
+                self.assertTrue(np.all(res.n2 >= 0.0))
+
 
 class TestGUIComponents(unittest.TestCase):
 
@@ -893,6 +953,76 @@ class TestGUIComponents(unittest.TestCase):
             info_html = panel.info_btn._info_html
             self.assertIn("Discrete Difference", info_html)
             self.assertIn("Biological Scenarios", info_html)
+
+        window.close()
+
+    def test_discrete_mode_controls_and_ladder_plot(self):
+        """Verify discrete mode UI controls visibility and canvas steps."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        window.show()
+        QApplication.processEvents()
+        panel = window.param_panel
+
+        # Default model is Lotka-Volterra competition (continuous)
+        self.assertEqual(panel.mode, "continuous")
+        self.assertFalse(panel.points_lbl.isHidden())
+        self.assertFalse(panel.points_spin.isHidden())
+        self.assertEqual(panel.t_start_spin.decimals(), 2)
+        self.assertEqual(panel.t_end_spin.decimals(), 2)
+
+        # Toggle to discrete
+        panel._toggle_mode()
+        QApplication.processEvents()
+        self.assertEqual(panel.mode, "discrete")
+        self.assertTrue(panel.points_lbl.isHidden())
+        self.assertTrue(panel.points_spin.isHidden())
+        self.assertEqual(panel.t_start_spin.decimals(), 0)
+        self.assertEqual(panel.t_end_spin.decimals(), 0)
+        self.assertEqual(panel.t_start_spin.singleStep(), 1.0)
+        self.assertEqual(panel.t_end_spin.singleStep(), 1.0)
+
+        # Run simulation in discrete mode
+        panel.t_start_spin.setValue(0.0)
+        panel.t_end_spin.setValue(15.0)
+        inputs = panel.get_simulation_inputs()
+        self.assertEqual(inputs["num_points"], 16)
+
+        window.run_simulation()
+        res = window.canvas_widget._current_result
+        self.assertEqual(len(res.t), 16)
+        self.assertEqual(res.metadata["steps"], 15)
+
+        # Switch to single variable exponential in discrete mode
+        exp_model = ExponentialGrowthModel()
+        window._on_model_selected(exp_model, "discrete")
+        QApplication.processEvents()
+        self.assertTrue(panel.points_lbl.isHidden())
+        self.assertTrue(panel.points_spin.isHidden())
+
+        panel.t_start_spin.setValue(0.0)
+        panel.t_end_spin.setValue(15.0)
+        panel.n1_init_spin.setValue(16)
+        panel._param_inputs["r"].setValue(2.0)
+
+        window.run_simulation()
+        res_exp = window.canvas_widget._current_result
+        self.assertEqual(len(res_exp.t), 16)
+        self.assertAlmostEqual(res_exp.n1[0], 16.0)
+        expected_final = 16.0 * (3.0 ** 15)
+        self.assertAlmostEqual(res_exp.n1[-1], expected_final, delta=1.0)
+
+        # Toggle back to continuous
+        panel._toggle_mode()
+        QApplication.processEvents()
+        self.assertEqual(panel.mode, "continuous")
+        self.assertFalse(panel.points_lbl.isHidden())
+        self.assertFalse(panel.points_spin.isHidden())
+        self.assertEqual(panel.t_start_spin.decimals(), 2)
+        self.assertEqual(panel.t_end_spin.decimals(), 2)
+        self.assertEqual(panel.t_end_spin.singleStep(), 5.0)
 
         window.close()
 

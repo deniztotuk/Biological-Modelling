@@ -12,6 +12,7 @@ from typing import Optional
 import warnings
 
 import matplotlib
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
@@ -32,6 +33,15 @@ from bio_models.models import BiologicalModel, SimulationResult
 from bio_models.ui.styles import get_plot_colors, get_save_icon
 
 matplotlib.use("QtAgg")
+
+
+def _format_density(val: float) -> str:
+    """Format population count gracefully for display in status bar."""
+    if not np.isfinite(val):
+        return "N/A"
+    if abs(val) >= 1e6 or (0 < abs(val) < 1e-2):
+        return f"{val:.2e}"
+    return f"{val:.2f}"
 
 
 class BioPlotCanvas(QWidget):
@@ -233,20 +243,19 @@ class BioPlotCanvas(QWidget):
             self.canvas.draw()
 
         if model.is_single_variable:
+            n_str = _format_density(result.n1[-1])
             if "K" in result.parameters:
                 k_int = int(round(result.parameters["K"]))
                 self.info_lbl.setText(
-                    f"{result.message} | Final: n={result.n1[-1]:.2f} "
-                    f"(K={k_int})"
+                    f"{result.message} | Final: n={n_str} (K={k_int})"
                 )
             else:
-                self.info_lbl.setText(
-                    f"{result.message} | Final: n={result.n1[-1]:.2f}"
-                )
+                self.info_lbl.setText(f"{result.message} | Final: n={n_str}")
         else:
+            n1_str = _format_density(result.n1[-1])
+            n2_str = _format_density(result.n2[-1])
             self.info_lbl.setText(
-                f"{result.message} | Final: n₁={result.n1[-1]:.2f}, "
-                f"n₂={result.n2[-1]:.2f}"
+                f"{result.message} | Final: n₁={n1_str}, n₂={n2_str}"
             )
 
     def _update_plot_single_variable(
@@ -266,10 +275,29 @@ class BioPlotCanvas(QWidget):
         # -------------------------------------------------------------
         # 1. Left Subplot: Population Dynamics Over Time
         # -------------------------------------------------------------
-        self.ax_time.plot(
-            t, n1, color=c1, linewidth=2.2, label=result.n1_label
-        )
-        self.ax_time.fill_between(t, n1, color=c1, alpha=0.12)
+        if is_disc:
+            self.ax_time.step(
+                t,
+                n1,
+                where="post",
+                color=c1,
+                linewidth=2.2,
+                label=result.n1_label,
+            )
+            self.ax_time.fill_between(
+                t, n1, step="post", color=c1, alpha=0.12
+            )
+            self.ax_time.plot(
+                t, n1, "o", color=c1, markersize=4.0, alpha=0.9
+            )
+            self.ax_time.xaxis.set_major_locator(
+                MaxNLocator(integer=True)
+            )
+        else:
+            self.ax_time.plot(
+                t, n1, color=c1, linewidth=2.2, label=result.n1_label
+            )
+            self.ax_time.fill_between(t, n1, color=c1, alpha=0.12)
 
         # Plot carrying capacity line if available
         if "K" in params:
@@ -357,9 +385,11 @@ class BioPlotCanvas(QWidget):
                 self.ax_phase.plot(
                     n1[:-1],
                     n1[1:],
+                    "o-",
                     color=traj_color,
-                    linewidth=1.5,
-                    alpha=0.6,
+                    linewidth=1.4,
+                    markersize=3.5,
+                    alpha=0.7,
                     label="Iteration Trajectory",
                 )
                 self.ax_phase.scatter(
@@ -517,17 +547,52 @@ class BioPlotCanvas(QWidget):
         c1 = colors["n1"]
         c2 = colors["n2"]
 
+        is_disc = result.metadata.get("mode") == "discrete"
+
         # -------------------------------------------------------------
         # 1. Left Subplot: Population Dynamics Over Time
         # -------------------------------------------------------------
-        self.ax_time.plot(
-            t, n1, color=c1, linewidth=2.2, label=result.n1_label
-        )
-        self.ax_time.plot(
-            t, n2, color=c2, linewidth=2.2, label=result.n2_label
-        )
-        self.ax_time.fill_between(t, n1, color=c1, alpha=0.10)
-        self.ax_time.fill_between(t, n2, color=c2, alpha=0.10)
+        if is_disc:
+            self.ax_time.step(
+                t,
+                n1,
+                where="post",
+                color=c1,
+                linewidth=2.2,
+                label=result.n1_label,
+            )
+            self.ax_time.step(
+                t,
+                n2,
+                where="post",
+                color=c2,
+                linewidth=2.2,
+                label=result.n2_label,
+            )
+            self.ax_time.fill_between(
+                t, n1, step="post", color=c1, alpha=0.10
+            )
+            self.ax_time.fill_between(
+                t, n2, step="post", color=c2, alpha=0.10
+            )
+            self.ax_time.plot(
+                t, n1, "o", color=c1, markersize=3.5, alpha=0.85
+            )
+            self.ax_time.plot(
+                t, n2, "o", color=c2, markersize=3.5, alpha=0.85
+            )
+            self.ax_time.xaxis.set_major_locator(
+                MaxNLocator(integer=True)
+            )
+        else:
+            self.ax_time.plot(
+                t, n1, color=c1, linewidth=2.2, label=result.n1_label
+            )
+            self.ax_time.plot(
+                t, n2, color=c2, linewidth=2.2, label=result.n2_label
+            )
+            self.ax_time.fill_between(t, n1, color=c1, alpha=0.10)
+            self.ax_time.fill_between(t, n2, color=c2, alpha=0.10)
 
         self.ax_time.set_title(
             "Population Dynamics (Time Series)",
@@ -536,11 +601,7 @@ class BioPlotCanvas(QWidget):
             color=colors["text_color"],
             pad=10,
         )
-        time_unit = (
-            "Time Steps (discrete)"
-            if result.metadata.get("mode") == "discrete"
-            else "Time (t)"
-        )
+        time_unit = "Time Steps (discrete)" if is_disc else "Time (t)"
         self.ax_time.set_xlabel(
             time_unit,
             fontsize=10,
@@ -554,9 +615,13 @@ class BioPlotCanvas(QWidget):
             color=colors["subtext_color"],
         )
         self.ax_time.set_xlim(left=t[0], right=t[-1])
+        finite_n1 = n1[np.isfinite(n1)]
+        finite_n2 = n2[np.isfinite(n2)]
+        max_1 = float(np.max(finite_n1)) if len(finite_n1) > 0 else 1.0
+        max_2 = float(np.max(finite_n2)) if len(finite_n2) > 0 else 1.0
         self.ax_time.set_ylim(
             bottom=0,
-            top=max(1.0, max(np.max(n1), np.max(n2)) * 1.15),
+            top=max(1.0, max(max_1, max_2) * 1.15),
         )
         self.ax_time.grid(
             True, linestyle="--", alpha=0.5, color=colors["grid"]
@@ -576,13 +641,25 @@ class BioPlotCanvas(QWidget):
         # 2. Right Subplot: Phase Portrait (State Space)
         # -------------------------------------------------------------
         traj_color = colors["trajectory"]
-        self.ax_phase.plot(
-            n1,
-            n2,
-            color=traj_color,
-            linewidth=2.0,
-            label="Trajectory (n₁, n₂)",
-        )
+        if is_disc:
+            self.ax_phase.plot(
+                n1,
+                n2,
+                "o--",
+                color=traj_color,
+                linewidth=1.4,
+                markersize=3.5,
+                alpha=0.8,
+                label="Discrete Trajectory (n₁, n₂)",
+            )
+        else:
+            self.ax_phase.plot(
+                n1,
+                n2,
+                color=traj_color,
+                linewidth=2.0,
+                label="Trajectory (n₁, n₂)",
+            )
 
         # Markers for start and end points
         init_n1 = int(round(n1[0]))

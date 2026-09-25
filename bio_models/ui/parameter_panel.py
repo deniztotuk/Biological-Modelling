@@ -90,6 +90,8 @@ class ParameterPanel(QWidget):
         self.mode_badge: Optional[QPushButton] = None
         self.start_time_lbl: Optional[QLabel] = None
         self.end_time_lbl: Optional[QLabel] = None
+        self.points_lbl: Optional[QLabel] = None
+        self.points_spin: Optional[QSpinBox] = None
         self.info_btn: Optional[ModelInfoButton] = None
 
         self._init_ui()
@@ -397,12 +399,21 @@ class ParameterPanel(QWidget):
         row_idx += 1
 
         # Sampling points
-        sim_layout.addWidget(QLabel("Output Resolution Points:"), row_idx, 0)
+        self.points_lbl = QLabel("Output Resolution Points:")
+        sim_layout.addWidget(self.points_lbl, row_idx, 0)
         self.points_spin = QSpinBox()
         self.points_spin.setRange(50, 5000)
         self.points_spin.setValue(500)
         self.points_spin.setSingleStep(50)
         sim_layout.addWidget(self.points_spin, row_idx, 1)
+
+        if self.mode == "discrete":
+            self.points_lbl.setVisible(False)
+            self.points_spin.setVisible(False)
+            self.t_start_spin.setDecimals(0)
+            self.t_end_spin.setDecimals(0)
+            self.t_start_spin.setSingleStep(1.0)
+            self.t_end_spin.setSingleStep(1.0)
 
         self.content_layout.addWidget(sim_group)
 
@@ -534,8 +545,8 @@ class ParameterPanel(QWidget):
     def _toggle_mode(self):
         """Toggle calculation method between continuous and discrete mode."""
         self.mode = "discrete" if self.mode == "continuous" else "continuous"
+        is_disc = self.mode == "discrete"
         if self.mode_badge is not None:
-            is_disc = self.mode == "discrete"
             self.mode_badge.setText(
                 "Discrete Recursion" if is_disc else "Continuous ODE"
             )
@@ -546,15 +557,27 @@ class ParameterPanel(QWidget):
         if self.start_time_lbl is not None:
             self.start_time_lbl.setText(
                 "Start Step (t<sub>start</sub>):"
-                if self.mode == "discrete"
+                if is_disc
                 else "Start Time (t<sub>start</sub>):"
             )
         if self.end_time_lbl is not None:
             self.end_time_lbl.setText(
                 "End Step (t<sub>end</sub>):"
-                if self.mode == "discrete"
+                if is_disc
                 else "End Time (t<sub>end</sub>):"
             )
+
+        if self.points_lbl is not None:
+            self.points_lbl.setVisible(not is_disc)
+        if self.points_spin is not None:
+            self.points_spin.setVisible(not is_disc)
+
+        if self.t_start_spin is not None:
+            self.t_start_spin.setDecimals(0 if is_disc else 2)
+            self.t_start_spin.setSingleStep(1.0)
+        if self.t_end_spin is not None:
+            self.t_end_spin.setDecimals(0 if is_disc else 2)
+            self.t_end_spin.setSingleStep(1.0 if is_disc else 5.0)
 
         if self.info_btn is not None and self.model is not None:
             self.info_btn.set_info_html(
@@ -571,6 +594,23 @@ class ParameterPanel(QWidget):
             if self.n2_init_spin is not None
             else 0
         )
+        if self.mode == "discrete":
+            steps = max(
+                1,
+                int(
+                    round(
+                        self.t_end_spin.value() - self.t_start_spin.value()
+                    )
+                ),
+            )
+            num_points = steps + 1
+        else:
+            num_points = (
+                self.points_spin.value()
+                if self.points_spin is not None
+                else 500
+            )
+
         return {
             "model": self.model,
             "mode": self.mode,
@@ -579,6 +619,6 @@ class ParameterPanel(QWidget):
                 n2_val,
             ),
             "t_span": (self.t_start_spin.value(), self.t_end_spin.value()),
-            "num_points": self.points_spin.value(),
+            "num_points": num_points,
             "params": params,
         }

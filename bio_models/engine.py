@@ -47,8 +47,17 @@ def simulate_model(
     )
 
     if mode == "discrete":
-        # Discrete iteration step by step
-        steps = num_points
+        # In discrete mode, time advances in integer steps (generations).
+        # If num_points is omitted or default 500 while t_span is specified,
+        # compute the natural step count from t_end - t_start.
+        if num_points is None or (
+            num_points == 500 and (t_end - t_start) <= 250
+        ):
+            span_steps = max(1, int(round(t_end - t_start)))
+            steps = span_steps + 1
+        else:
+            steps = max(2, int(num_points))
+
         t_arr = np.linspace(t_start, t_end, steps)
         n1_arr = np.zeros(steps)
         n2_arr = np.zeros(steps)
@@ -62,7 +71,10 @@ def simulate_model(
                 except NotImplementedError:
                     dt = 1.0
                     curr = curr + dt * model.rhs(float(i), curr, params)
-                    curr[0] = max(0.0, curr[0])
+                curr = np.nan_to_num(
+                    curr, nan=0.0, posinf=1e300, neginf=0.0
+                )
+                curr[0] = max(0.0, curr[0])
                 n1_arr[i] = curr[0]
         else:
             curr = np.array([n1_init, n2_init], dtype=float)
@@ -74,12 +86,16 @@ def simulate_model(
                 except NotImplementedError:
                     dt = 1.0
                     curr = curr + dt * model.rhs(float(i), curr, params)
-                    curr[0] = max(0.0, curr[0])
-                    curr[1] = max(0.0, curr[1])
+                curr = np.nan_to_num(
+                    curr, nan=0.0, posinf=1e300, neginf=0.0
+                )
+                curr[0] = max(0.0, curr[0])
+                curr[1] = max(0.0, curr[1])
                 n1_arr[i] = curr[0]
                 n2_arr[i] = curr[1]
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+        num_recur_steps = steps - 1
         return SimulationResult(
             t=t_arr,
             n1=n1_arr,
@@ -90,13 +106,13 @@ def simulate_model(
             parameters=params,
             metadata={
                 "mode": "discrete",
-                "steps": steps,
+                "steps": num_recur_steps,
                 "elapsed_ms": elapsed_ms,
                 "is_single_variable": model.is_single_variable,
             },
             success=True,
             message=(
-                f"Discrete simulation complete ({steps} steps in "
+                f"Discrete simulation complete ({num_recur_steps} steps in "
                 f"{elapsed_ms:.1f} ms)"
             ),
         )
