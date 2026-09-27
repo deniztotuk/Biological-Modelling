@@ -689,6 +689,35 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_drawer_category_order(self):
+        """Verify Single-Species Population Growth is at the top of menu."""
+        from PyQt6.QtWidgets import QLabel
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        drawer = window.drawer
+
+        cat_labels = [
+            lbl.text()
+            for lbl in drawer.findChildren(QLabel)
+            if lbl.objectName() == "DrawerCategory"
+        ]
+
+        self.assertGreaterEqual(len(cat_labels), 3)
+        # First category must be Single-Species Population Growth
+        self.assertEqual(cat_labels[0], "Single-Species Population Growth")
+        self.assertEqual(cat_labels[1], "Competition & Interactions")
+        self.assertEqual(cat_labels[2], "Consumer-Resource Models")
+
+        # First model buttons under top category must be Exponential & Logistic
+        first_model_names = [m.name for _, m, _ in drawer._buttons[:2]]
+        self.assertEqual(
+            first_model_names,
+            ["Exponential Growth Model", "Logistic Growth Model"],
+        )
+
+        window.close()
+
     def test_auto_load_scenario_preset_and_no_button(self):
         """Verify Load button is removed and combo auto-loads preset."""
         from PyQt6.QtWidgets import QPushButton

@@ -103,12 +103,28 @@ class SandwichDrawer(QFrame):
         content_layout.setContentsMargins(0, 8, 0, 16)
         content_layout.setSpacing(0)
 
-        # Categorize models
+        # Categorize models in desired drawer menu order
+        category_order = [
+            "Single-Species Population Growth",
+            "Competition & Interactions",
+            "Consumer-Resource Models",
+        ]
+
         models_by_cat = {}
         for m in AVAILABLE_MODELS:
             models_by_cat.setdefault(m.category, []).append(m)
 
-        for category, models in models_by_cat.items():
+        ordered_categories = sorted(
+            models_by_cat.keys(),
+            key=lambda cat: (
+                category_order.index(cat)
+                if cat in category_order
+                else len(category_order)
+            ),
+        )
+
+        for category in ordered_categories:
+            models = models_by_cat[category]
             cat_label = QLabel(category)
             cat_label.setObjectName("DrawerCategory")
             content_layout.addWidget(cat_label)
