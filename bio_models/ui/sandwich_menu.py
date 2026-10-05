@@ -56,7 +56,7 @@ class SandwichDrawer(QFrame):
         self._active_button: Optional[QPushButton] = None
         self._scroll_content: Optional[QWidget] = None
         self.anim: Optional[QPropertyAnimation] = None
-        self._last_window_width: int = 1340
+        self._last_window_width: int = 1560
 
         self._optimal_expanded_width = self.DEFAULT_EXPANDED_WIDTH
         self._min_expanded_width = self.MIN_EXPANDED_WIDTH
@@ -267,7 +267,7 @@ class SandwichDrawer(QFrame):
 
     def adapt_to_window_width(self, window_width: int):
         """Dynamically adapt drawer width:
-        - At default (1340px) or fullscreen resolutions: comfortably
+        - At default (1560px) or fullscreen resolutions: comfortably
           sized at optimal_expanded_width so the horizontal scrollbar
           disappears.
         - At smaller window widths (<1300px down to minimum 950px):

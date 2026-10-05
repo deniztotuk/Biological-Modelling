@@ -40,8 +40,26 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             "BioModel Studio — Ecology & Evolutionary Dynamics"
         )
-        self.resize(1340, 820)
         self.setMinimumSize(950, 600)
+
+        # Configure spacious initial window dimensions with screen
+        # awareness.
+        target_w = 1560
+        target_h = 880
+        screen = QApplication.primaryScreen()
+        if screen and QApplication.platformName() != "offscreen":
+            avail = screen.availableGeometry()
+            if avail.width() < target_w:
+                target_w = max(1150, int(avail.width() * 0.95))
+            if avail.height() < target_h:
+                target_h = max(700, int(avail.height() * 0.90))
+
+        self.resize(target_w, target_h)
+
+        if screen and QApplication.platformName() != "offscreen":
+            geo = self.frameGeometry()
+            geo.moveCenter(screen.availableGeometry().center())
+            self.move(geo.topLeft())
 
         self.current_theme = default_theme
 
@@ -196,8 +214,8 @@ class MainWindow(QMainWindow):
         self.canvas_widget.export_completed.connect(self._on_export_completed)
         content_splitter.addWidget(self.canvas_widget)
 
-        # Proportions: 35% params, 65% plot
-        content_splitter.setSizes([380, 720])
+        # Proportions: ~30% params, ~70% plot.
+        content_splitter.setSizes([380, 820])
         content_splitter.setStretchFactor(0, 0)
         content_splitter.setStretchFactor(1, 1)
 
