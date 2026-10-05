@@ -1,6 +1,4 @@
-"""
-Unit tests for Biological Modelling engine, models, and export functionality.
-"""
+"""Unit tests for engine, models, and export functionality."""
 
 import os
 import tempfile
@@ -19,6 +17,7 @@ from bio_models.models import (
 
 
 def test_competition_continuous_simulation():
+    """Verify continuous ODE simulation for competition model."""
     model = LotkaVolterraCompetitionModel()
     params = model.default_params
     res = simulate_model(
@@ -41,7 +40,7 @@ def test_competition_continuous_simulation():
 
 
 def test_arbitrary_initial_and_end_time():
-    """Verify models can start at arbitrary t_start != 0 and reach t_end."""
+    """Verify models start at arbitrary t_start != 0 and reach t_end."""
     model = LotkaVolterraCompetitionModel()
     params = model.default_params
 
@@ -85,7 +84,7 @@ def test_arbitrary_initial_and_end_time():
 
 
 def test_positive_integer_initial_conditions():
-    """Verify engine enforces positive integers (>= 1) for individuals."""
+    """Verify engine enforces positive integers (>= 1) for counts."""
     model = LotkaVolterraCompetitionModel()
     params = model.default_params
 
@@ -102,6 +101,7 @@ def test_positive_integer_initial_conditions():
 
 
 def test_competition_discrete_recursion():
+    """Verify discrete recursion step for competition model."""
     model = LotkaVolterraCompetitionModel()
     params = model.default_params
     res = simulate_model(
@@ -120,6 +120,7 @@ def test_competition_discrete_recursion():
 
 
 def test_competition_relationship_classification():
+    """Verify ecological relationship classification logic."""
     model = LotkaVolterraCompetitionModel()
     assert "Mutualistic" in model.classify_relationship(-0.5, -0.4)
     assert "Competitive" in model.classify_relationship(0.5, 0.4)
@@ -130,6 +131,7 @@ def test_competition_relationship_classification():
 
 
 def test_classic_predator_prey_oscillations():
+    """Verify limit cycle oscillations in Lotka-Volterra."""
     model = LotkaVolterraPredatorPreyModel()
     params = model.default_params
     res = simulate_model(
@@ -149,6 +151,7 @@ def test_classic_predator_prey_oscillations():
 
 
 def test_chemostat_model():
+    """Verify chemostat nutrient-consumer dynamics."""
     model = ChemostatModel()
     params = model.default_params
     res = simulate_model(
@@ -165,6 +168,7 @@ def test_chemostat_model():
 
 
 def test_rosenzweig_macarthur_limit_cycle():
+    """Verify limit cycles in Rosenzweig-MacArthur model."""
     model = RosenzweigMacArthurModel()
     params = model.default_params
     res = simulate_model(
@@ -181,6 +185,7 @@ def test_rosenzweig_macarthur_limit_cycle():
 
 
 def test_type_iii_model():
+    """Verify Type III sigmoidal predator-prey dynamics."""
     model = TypeIIIPredatorPreyModel()
     params = model.default_params
     res = simulate_model(
@@ -197,6 +202,7 @@ def test_type_iii_model():
 
 
 def test_modular_consumer_resource_combinations():
+    """Verify all combinations of modular consumer-resource."""
     f_types = [
         "constant_inflow",
         "constant_outflow",
@@ -230,6 +236,7 @@ def test_modular_consumer_resource_combinations():
 
 
 def test_nullclines_generation():
+    """Verify nullcline generation for phase plane."""
     model = LotkaVolterraCompetitionModel()
     nullclines = model.get_nullclines(
         model.default_params, (0.0, 150.0), (0.0, 150.0)
@@ -238,6 +245,7 @@ def test_nullclines_generation():
 
 
 def test_jpeg_export():
+    """Verify headless JPEG plot image export."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt

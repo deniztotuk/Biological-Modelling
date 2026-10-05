@@ -34,7 +34,7 @@ from bio_models.ui.styles import get_info_icon, get_play_icon
 
 
 class ModelInfoButton(QPushButton):
-    """Small circular info badge displaying model equations and scenarios."""
+    """Small circular info badge showing equations and scenarios."""
 
     def __init__(self, theme: str = "dark", parent=None):
         super().__init__(parent)
@@ -47,27 +47,33 @@ class ModelInfoButton(QPushButton):
         self.clicked.connect(self._show_info)
 
     def update_icon(self):
+        """Update icon pixmap to match the current theme."""
         self.setIcon(get_info_icon(self.theme))
         self.setIconSize(QSize(16, 16))
 
     def set_theme(self, theme: str):
+        """Set active theme and refresh info icon appearance."""
         self.theme = theme
         self.update_icon()
 
     def set_info_html(self, html: str):
+        """Set HTML content for the info tooltip."""
         self._info_html = html
         self.setToolTip(html)
 
     def _show_info(self):
+        # Display rich HTML tooltip popup next to info button.
         if self._info_html:
             p = self.mapToGlobal(QPoint(self.width() + 6, -10))
             QToolTip.showText(p, self._info_html, self)
 
     def enterEvent(self, event):
+        """Display info tooltip when mouse hovers over the button."""
         super().enterEvent(event)
         self._show_info()
 
     def leaveEvent(self, event):
+        """Hide info tooltip when mouse leaves the button."""
         super().leaveEvent(event)
         QToolTip.hideText()
 
@@ -142,6 +148,7 @@ class ParameterPanel(QWidget):
                 )
 
     def set_model(self, model: BiologicalModel, mode: str = "continuous"):
+        """Set active model and calculation mode, rebuilding UI."""
         self.model = model
         self.mode = mode
         self._build_panel_content()
@@ -172,7 +179,7 @@ class ParameterPanel(QWidget):
         )
 
     def _build_panel_content(self):
-        # Clear existing layout and all children to prevent overlapping text
+        # Clear existing layout and children to avoid text overlap.
         self._clear_layout(self.content_layout)
         for child in self.scroll_content.findChildren(QWidget):
             child.setParent(None)
@@ -270,7 +277,7 @@ class ParameterPanel(QWidget):
             preset_layout.addWidget(desc_row)
             self.content_layout.addWidget(preset_group)
 
-        # 3. Modular Function Selector (Only for Modular Consumer-Resource)
+        # 3. Modular Function Selector (Modular Consumer-Resource only).
         if (
             "Modular" in self.model.name
             and isinstance(self.model, ConsumerResourceModel)
@@ -543,7 +550,7 @@ class ParameterPanel(QWidget):
             self.relationship_changed.emit(rel)
 
     def _toggle_mode(self):
-        """Toggle calculation method between continuous and discrete mode."""
+        """Toggle calculation between continuous and discrete mode."""
         self.mode = "discrete" if self.mode == "continuous" else "continuous"
         is_disc = self.mode == "discrete"
         if self.mode_badge is not None:

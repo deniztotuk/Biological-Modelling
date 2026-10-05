@@ -26,7 +26,7 @@ def qapp():
 
 
 def test_main_window_creation(qapp):
-    """Verify MainWindow creation, drawer toggle, simulation, and export."""
+    """Verify MainWindow creation, drawer toggle, and simulation."""
     window = MainWindow()
     assert window is not None
     assert window.windowTitle().startswith("BioModel Studio")

@@ -1343,7 +1343,7 @@ def get_stylesheet(theme: str = "light") -> str:
 
 
 def get_plot_colors(theme: str = "light") -> dict:
-    """Return plotting color dictionary for theme ('light' or 'dark')."""
+    """Return plot color dictionary for theme ('light' or 'dark')."""
     return DARK_PLOT_COLORS if theme.lower() == "dark" else LIGHT_PLOT_COLORS
 
 

@@ -1,5 +1,5 @@
-"""
-Model information, mathematical governing equations, and biological scenarios.
+"""Model information, governing equations, and biological scenarios.
+
 Provides formatted HTML for hover tooltips on the model info badge.
 """
 
@@ -230,10 +230,10 @@ MODEL_DETAILS: Dict[str, Dict[str, Any]] = {
 def get_model_info_html(
     model_name: str, mode: str = "continuous", theme: str = "dark"
 ) -> str:
-    """Return styled HTML information for the given model and calculation mode.
+    """Return styled HTML info for the given model and calculation mode.
 
-    Informs which equations (differential vs difference) are used to draw
-    the graph and details the general biological scenarios modeled.
+    Informs which equations (differential vs difference) are used to
+    draw the graph and details general biological scenarios modeled.
     """
     details = MODEL_DETAILS.get(
         model_name,

@@ -45,8 +45,8 @@ def _format_density(val: float) -> str:
 
 
 class BioPlotCanvas(QWidget):
-    """Dual-view visualization widget displaying both time-series dynamics
-    and phase-space trajectory, with Light/Dark themes and JPEG export.
+    """Dual-view visualization widget for time-series and phase space,
+    supporting Light and Dark themes with JPEG export.
     """
 
     export_completed = pyqtSignal(str)
@@ -112,7 +112,7 @@ class BioPlotCanvas(QWidget):
         self._apply_initial_styling()
 
     def set_theme(self, theme: str):
-        """Update plotting colors and redraw active plots with new theme."""
+        """Update plot colors and redraw active plots with new theme."""
         self.theme = theme
         if hasattr(self, "export_btn"):
             self.export_btn.setIcon(get_save_icon(self.theme))
@@ -264,7 +264,9 @@ class BioPlotCanvas(QWidget):
         model: BiologicalModel,
         colors: dict,
     ) -> None:
-        """Render single-species dynamics: time-series and 1D phase space."""
+        """Render single-species dynamics:
+        time-series trajectory and 1D phase space.
+        """
         t = result.t
         n1 = result.n1
         c1 = colors["n1"]
@@ -539,7 +541,9 @@ class BioPlotCanvas(QWidget):
         model: BiologicalModel,
         colors: dict,
     ) -> None:
-        """Render two-species dynamics: time-series and phase portrait."""
+        """Render two-species dynamics:
+        time-series trajectory and phase portrait.
+        """
         t = result.t
         n1 = result.n1
         n2 = result.n2
@@ -842,13 +846,13 @@ class BioPlotCanvas(QWidget):
             return None
 
     def resizeEvent(self, event):
-        """Debounce layout recalculation during window and drawer resize."""
+        """Debounce layout recalculation during window/drawer resize."""
         super().resizeEvent(event)
         if self._current_result is not None:
             self._resize_timer.start()
 
     def _on_resize_debounced(self):
-        """Execute tight layout once after resize or drawer animation ends."""
+        # Execute tight layout once after resize or drawer slide ends.
         if self._current_result is not None:
             try:
                 with warnings.catch_warnings():

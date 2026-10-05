@@ -1,7 +1,8 @@
-"""
-Main Application Window.
+"""Main Application Window.
+
 Integrates Sandwich Drawer, Parameter Panel, Canvas Widget,
-Native Menu Bar with Settings (Theme selection: Light / Dark), and shortcuts.
+Native Menu Bar with Settings (Theme selection: Light / Dark),
+and shortcuts.
 """
 
 from PyQt6.QtCore import Qt
@@ -27,10 +28,11 @@ from bio_models.ui.styles import get_stylesheet, get_theme_palette
 
 
 class MainWindow(QMainWindow):
-    """
-    Main desktop application window for biological interaction modeling.
+    """Main desktop application window for biological modeling.
+
     Features dynamic Light and Dark theme switching, native menu bar,
-    sandwich navigation drawer, parameter controls, and dual-view plotting.
+    sandwich navigation drawer, parameter controls, and dual-view
+    plotting.
     """
 
     def __init__(self, default_theme: str = "light"):
@@ -155,7 +157,7 @@ class MainWindow(QMainWindow):
         help_text.setObjectName("AppHelp")
         top_layout.addWidget(help_text)
 
-        # Quick Theme Switcher Button on the bar (reflects current theme)
+        # Quick Theme Switcher Button on the bar (shows active theme).
         self.theme_btn = QPushButton("☀️ Light Mode")
         self.theme_btn.setObjectName("ThemeToggleBtn")
         self.theme_btn.setToolTip(
@@ -273,10 +275,12 @@ class MainWindow(QMainWindow):
                 f"Applied {self.current_theme.capitalize()} Theme", 3000)
 
     def _toggle_quick_theme(self):
+        # Toggle between light and dark themes via top bar button.
         new_theme = "dark" if self.current_theme == "light" else "light"
         self.apply_theme(new_theme)
 
     def _toggle_menu(self):
+        # Toggle slide visibility of models drawer menu.
         self.drawer.toggle_collapse()
         if self.drawer.is_collapsed:
             self.menu_toggle_btn.setText("☰  Models Menu")
@@ -284,11 +288,13 @@ class MainWindow(QMainWindow):
             self.menu_toggle_btn.setText("✕  Hide Menu")
 
     def _on_model_selected(self, model: BiologicalModel, mode: str):
+        # Update parameter inputs and run simulation on model switch.
         self.param_panel.set_model(model, mode)
         self.status_bar.showMessage(f"Selected: {model.name} [{mode}]")
         self.run_simulation()
 
     def run_simulation(self):
+        """Execute simulation with current inputs and refresh canvas."""
         inputs = self.param_panel.get_simulation_inputs()
         model = inputs["model"]
         if not model:
@@ -308,10 +314,12 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage(result.message)
 
     def _on_export_completed(self, path: str):
+        # Display export confirmation message in status bar.
         self.status_bar.showMessage(
             f"Graph successfully exported to JPEG: {path}", 6000)
 
     def resizeEvent(self, event):
+        """Handle window resize event to adjust drawer dimensions."""
         super().resizeEvent(event)
         if hasattr(self, "drawer") and not self.drawer.is_collapsed:
             self.drawer.adapt_to_window_width(self.width())

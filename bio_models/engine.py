@@ -1,6 +1,7 @@
-"""
-Simulation and Numerical Integration Engine.
-Uses SciPy adaptive ODE solvers (RK45, LSODA) and discrete recurrence steps.
+"""Simulation and Numerical Integration Engine.
+
+Uses SciPy adaptive ODE solvers (RK45, LSODA) and discrete recurrence
+steps.
 """
 
 import time
@@ -47,8 +48,8 @@ def simulate_model(
     )
 
     if mode == "discrete":
-        # In discrete mode, time advances in integer steps (generations).
-        # If num_points is omitted or default 500 while t_span is specified,
+        # In discrete mode, time advances in integer generation steps.
+        # If num_points is omitted or default 500 while t_span is given,
         # compute the natural step count from t_end - t_start.
         if num_points is None or (
             num_points == 500 and (t_end - t_start) <= 250
@@ -120,12 +121,14 @@ def simulate_model(
     # Continuous integration via solve_ivp
     if model.is_single_variable:
         def ode_system(t, y):
+            """ODE right-hand side for single-species system."""
             clipped = np.array([max(0.0, y[0])], dtype=float)
             return model.rhs(t, clipped, params)
 
         y0 = [n1_init]
     else:
         def ode_system(t, y):
+            """ODE right-hand side for two-species interactions."""
             clipped = np.array([max(0.0, y[0]), max(0.0, y[1])], dtype=float)
             return model.rhs(t, clipped, params)
 

@@ -1,6 +1,6 @@
-"""
-Sandwich / Hamburger Drawer Menu for Model Selection.
-Allows toggling and selecting between competition and consumer-resource models.
+"""Sandwich / Hamburger Drawer Menu for Model Selection.
+
+Allows toggling and selecting biological interaction models.
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -176,7 +176,7 @@ class SandwichDrawer(QFrame):
                     topic_layout.addWidget(btn)
                     self._buttons.append((btn, model, "continuous"))
 
-            # Start collapsed: models appear when user clicks on topic name
+            # Models start collapsed until user clicks the topic name.
             topic_container.setVisible(False)
             content_layout.addWidget(topic_container)
 
@@ -265,7 +265,7 @@ class SandwichDrawer(QFrame):
 
     def adapt_to_window_width(self, window_width: int):
         """Dynamically adapt drawer width:
-        - At default (1340px) or fullscreen/high resolutions: comfortably
+        - At default (1340px) or fullscreen resolutions: comfortably
           sized at optimal_expanded_width so the horizontal scrollbar
           disappears.
         - At smaller window widths (<1300px down to minimum 950px):
@@ -312,7 +312,7 @@ class SandwichDrawer(QFrame):
         btn.style().polish(btn)
 
     def toggle_collapse(self):
-        """Toggle side drawer width smoothly between 0 and expanded width."""
+        """Toggle side drawer width between 0 and expanded width."""
         self._is_collapsed = not self._is_collapsed
         target_width = 0 if self._is_collapsed else self._expanded_width
 
@@ -322,8 +322,8 @@ class SandwichDrawer(QFrame):
         ):
             self.anim.stop()
 
-        # Stabilize inner content layout and suppress scrollbar flickering
-        # during the animation transition
+        # Stabilize inner content layout to suppress scrollbar flicker
+        # during the animation transition.
         if self._scroll_content:
             self._scroll_content.setFixedWidth(self._expanded_width)
         self.scroll_area.setHorizontalScrollBarPolicy(
@@ -339,7 +339,7 @@ class SandwichDrawer(QFrame):
         self.anim.start()
 
     def _on_animation_finished(self):
-        """Restore normal scrolling and flexibility after slide completes."""
+        # Restore normal scrolling after slide animation completes.
         if not self._is_collapsed:
             if self._scroll_content:
                 self._scroll_content.setMinimumWidth(0)
@@ -352,16 +352,20 @@ class SandwichDrawer(QFrame):
 
     @property
     def is_collapsed(self) -> bool:
+        """Return True if drawer is currently collapsed."""
         return self._is_collapsed
 
     @property
     def expanded_width(self) -> int:
+        """Return current target expanded width in pixels."""
         return self._expanded_width
 
     @property
     def optimal_expanded_width(self) -> int:
+        """Return optimal expanded width without scrollbars."""
         return self._optimal_expanded_width
 
     @property
     def min_expanded_width(self) -> int:
+        """Return minimum compressed width for narrow windows."""
         return self._min_expanded_width

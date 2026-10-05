@@ -33,7 +33,7 @@ def run_gui(default_theme: str = "light"):
 
 
 def export_sample():
-    """Headless simulation and export of sample JPEG images in both Light
+    """Headless simulation and export of sample JPEG images in Light
     and Dark themes.
     """
     import matplotlib

@@ -1,6 +1,4 @@
-"""
-Standalone test runner using standard library unittest and Python assertions.
-"""
+"""Standalone test runner using standard library unittest and assertions."""
 
 import os
 import sys
@@ -9,7 +7,7 @@ import unittest
 
 import numpy as np
 
-# Set offscreen environment for Qt and Matplotlib before importing GUI modules
+# Set offscreen environment for Qt and Matplotlib before GUI modules.
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ.setdefault(
     "MPLCONFIGDIR",
@@ -34,8 +32,10 @@ from bio_models.models import (  # noqa: E402
 
 
 class TestBioModels(unittest.TestCase):
+    """Unit test suite for biological models and simulation engine."""
 
     def test_competition_continuous_simulation(self):
+        """Verify continuous simulation for competition model."""
         model = LotkaVolterraCompetitionModel()
         params = model.default_params
         res = simulate_model(
@@ -56,7 +56,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(res.n2[-1], 0)
 
     def test_arbitrary_initial_and_end_time(self):
-        """Verify models start at arbitrary t_start != 0 and reach t_end."""
+        """Verify models start at arbitrary t_start and reach t_end."""
         model = LotkaVolterraCompetitionModel()
         params = model.default_params
 
@@ -111,7 +111,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(res_fallback.t[-1], res_fallback.t[0])
 
     def test_positive_integer_initial_conditions(self):
-        """Verify engine enforces positive integers (>= 1) for individuals."""
+        """Verify engine enforces positive integers (>= 1) for counts."""
         model = LotkaVolterraCompetitionModel()
         params = model.default_params
 
@@ -136,6 +136,7 @@ class TestBioModels(unittest.TestCase):
         self.assertEqual(res_zero.n2[0], 1.0)
 
     def test_competition_discrete_recursion(self):
+        """Verify discrete recursion for competition model."""
         model = LotkaVolterraCompetitionModel()
         params = model.default_params
         res = simulate_model(model, initial_state=(
@@ -148,6 +149,7 @@ class TestBioModels(unittest.TestCase):
         self.assertTrue(np.all(res.n2 >= 0))
 
     def test_competition_relationship_classification(self):
+        """Verify relationship classification based on alphas."""
         model = LotkaVolterraCompetitionModel()
         self.assertIn("Mutualistic", model.classify_relationship(-0.5, -0.4))
         self.assertIn("Competitive", model.classify_relationship(0.5, 0.4))
@@ -157,6 +159,7 @@ class TestBioModels(unittest.TestCase):
         self.assertIn("Amensal", model.classify_relationship(0.5, 0.0))
 
     def test_classic_predator_prey_oscillations(self):
+        """Verify oscillatory dynamics in Lotka-Volterra."""
         model = LotkaVolterraPredatorPreyModel()
         params = model.default_params
         res = simulate_model(model, initial_state=(30.0, 10.0), t_span=(
@@ -169,6 +172,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(float(np.std(res.n2)), 2.0)
 
     def test_chemostat_model(self):
+        """Verify nutrient inflow and consumer dynamics."""
         model = ChemostatModel()
         params = model.default_params
         res = simulate_model(
@@ -184,6 +188,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(res.n2[-1], 0)
 
     def test_rosenzweig_macarthur_limit_cycle(self):
+        """Verify limit cycle generation in Type II system."""
         model = RosenzweigMacArthurModel()
         params = model.default_params
         res = simulate_model(
@@ -198,6 +203,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(float(np.max(res.n1)), float(np.min(res.n1)) * 1.5)
 
     def test_type_iii_model(self):
+        """Verify sigmoid functional response dynamics."""
         model = TypeIIIPredatorPreyModel()
         params = model.default_params
         res = simulate_model(
@@ -213,6 +219,7 @@ class TestBioModels(unittest.TestCase):
         self.assertTrue(np.all(res.n2 >= 0))
 
     def test_modular_consumer_resource_combinations(self):
+        """Verify modular consumer-resource combinations."""
         f_types = [
             "constant_inflow",
             "constant_outflow",
@@ -242,6 +249,7 @@ class TestBioModels(unittest.TestCase):
                 self.assertTrue(res.success, f"Failed for f={f}, g={g}")
 
     def test_nullclines_generation(self):
+        """Verify nullcline coordinate computation."""
         model = LotkaVolterraCompetitionModel()
         nullclines = model.get_nullclines(
             model.default_params, (0.0, 150.0), (0.0, 150.0)
@@ -249,6 +257,7 @@ class TestBioModels(unittest.TestCase):
         self.assertGreater(len(nullclines), 0)
 
     def test_jpeg_export(self):
+        """Verify high-resolution JPEG graph export."""
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
@@ -278,7 +287,7 @@ class TestBioModels(unittest.TestCase):
                 os.remove(tmp_path)
 
     def test_exponential_growth_model_analytical_and_discrete(self):
-        """Verify Exponential Growth matches analytical and recursion."""
+        """Verify Exponential Growth matches analytical solution."""
         model = ExponentialGrowthModel()
         self.assertEqual(model.num_variables, 1)
         self.assertTrue(model.is_single_variable)
@@ -299,7 +308,7 @@ class TestBioModels(unittest.TestCase):
         self.assertAlmostEqual(res.n1[-1], expected_final, delta=0.5)
 
         # 2. Discrete test: n(t+1) = (1 + r) * n(t) = R * n(t)
-        # Protection Island Pheasant benchmark (Lack 1954; Otto & Day 2007)
+        # Protection Island Pheasant benchmark (Lack 1954).
         # R = 3.0 => r = 2.0. Generations: 8 -> 24 -> 72 -> 216
         curr = np.array([8.0])
         gen1 = model.discrete_step(curr, {"r": 2.0})[0]
@@ -321,7 +330,7 @@ class TestBioModels(unittest.TestCase):
         self.assertTrue(res_decay.n1[-1] < res_decay.n1[0])
 
     def test_logistic_growth_model_saturation_and_discrete(self):
-        """Verify Logistic Growth saturation at K and discrete dynamics."""
+        """Verify Logistic Growth saturation at K and recursion."""
         model = LogisticGrowthModel()
         self.assertEqual(model.num_variables, 1)
         self.assertTrue(model.is_single_variable)
@@ -358,14 +367,14 @@ class TestBioModels(unittest.TestCase):
         self.assertAlmostEqual(curr[0], 370.0, delta=1.0)
 
     def test_logistic_growth_presets_and_names(self):
-        """Verify yeast presets removed and May 1976 removed from names."""
+        """Verify yeast presets and (May 1976) removed from names."""
         from bio_models.presets import PRESETS
         from bio_models.model_info import MODEL_DETAILS
 
         presets = PRESETS.get("Logistic Growth Model", [])
         preset_names = [p["name"] for p in presets]
 
-        # 1. Verify yeast culture presets are removed from logistic model
+        # 1. Verify yeast culture presets removed from logistic model.
         for name in preset_names:
             self.assertNotIn("Yeast", name)
             self.assertNotIn("Haploid", name)
@@ -376,22 +385,22 @@ class TestBioModels(unittest.TestCase):
         self.assertIn("Overcapacity Crash & Damping", preset_names)
         self.assertIn("Discrete Chaos & Limit Cycles", preset_names)
 
-        # 3. Verify (May 1976) reference is removed from chaotic growth's name
+        # 3. Verify (May 1976) reference removed from chaotic name.
         self.assertNotIn(
             "Discrete Chaos & Limit Cycles (May 1976)", preset_names
         )
         for name in preset_names:
             self.assertNotIn("May 1976", name)
 
-        # 4. Verify model info scenarios heading does not contain (May 1976)
+        # 4. Verify info scenarios heading does not contain (May 1976).
         scenarios = MODEL_DETAILS["Logistic Growth Model"]["scenarios"]
         self.assertIn("<b>Discrete Overshoot & Chaos</b>", scenarios)
         self.assertNotIn("Discrete Overshoot & Chaos (May 1976)", scenarios)
 
     def test_discrete_ladder_step_counts_and_exponential_benchmark(self):
-        """Verify discrete simulation produces exact step count & ladder."""
+        """Verify discrete simulation produces exact step counts."""
         model = ExponentialGrowthModel()
-        # Initial: 16, r: 2.0 (R = 3.0), t: [0, 15] => 15 steps, 16 points
+        # Initial: 16, r: 2.0, t: [0, 15] => 15 steps, 16 points.
         res = simulate_model(
             model=model,
             initial_state=(16.0, 0.0),
@@ -450,15 +459,18 @@ class TestBioModels(unittest.TestCase):
 
 
 class TestGUIComponents(unittest.TestCase):
+    """Test GUI components and user interaction workflows."""
 
     @classmethod
     def setUpClass(cls):
+        """Initialize QApplication instance for GUI testing."""
         from PyQt6.QtWidgets import QApplication
         cls.app = QApplication.instance()
         if cls.app is None:
             cls.app = QApplication(sys.argv)
 
     def test_main_window_and_drawer(self):
+        """Verify main window initialization and sandwich drawer toggling."""
         from bio_models.ui.main_window import MainWindow
 
         window = MainWindow()
@@ -493,6 +505,7 @@ class TestGUIComponents(unittest.TestCase):
         window.close()
 
     def test_theme_switching(self):
+        """Verify dynamic switching between light and dark visual themes."""
         from bio_models.ui.main_window import MainWindow
 
         window = MainWindow(default_theme="light")
@@ -517,6 +530,7 @@ class TestGUIComponents(unittest.TestCase):
         window.close()
 
     def test_gui_time_span_controls(self):
+        """Verify time span input spinboxes and simulation integration."""
         from bio_models.ui.main_window import MainWindow
 
         window = MainWindow()
@@ -542,6 +556,7 @@ class TestGUIComponents(unittest.TestCase):
         window.close()
 
     def test_gui_positive_integer_population_spins(self):
+        """Verify integer spinbox constraints on initial population values."""
         from PyQt6.QtWidgets import QSpinBox
         from bio_models.ui.main_window import MainWindow
 
@@ -565,7 +580,7 @@ class TestGUIComponents(unittest.TestCase):
         self.assertIsInstance(init_state[0], int)
         self.assertIsInstance(init_state[1], int)
 
-        # Check integer carrying capacities K1 and K2 in competition model
+        # Check integer carrying capacities K1 and K2 in competition
         k1_spin = window.param_panel._param_inputs["K1"]
         self.assertIsInstance(k1_spin, QSpinBox)
         self.assertGreaterEqual(k1_spin.minimum(), 1)
@@ -594,7 +609,7 @@ class TestGUIComponents(unittest.TestCase):
                 lbl for lbl in window.param_panel.findChildren(QLabel)
                 if lbl.objectName() == "ModelTitle"
             ]
-            # Must be exactly 1 title label, never duplicate/overlapping!
+            # Exactly 1 title label required; never duplicate.
             msg = f"Expected 1 title label for {model.name}"
             self.assertEqual(len(title_labels), 1, msg)
             self.assertEqual(title_labels[0].text(), model.name)
@@ -710,7 +725,8 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(cat_labels[1], "Competition & Interactions")
         self.assertEqual(cat_labels[2], "Consumer-Resource Models")
 
-        # First model buttons under top category must be Exponential & Logistic
+        # First model buttons under top category must be Exponential &
+        # Logistic.
         first_model_names = [m.name for _, m, _ in drawer._buttons[:2]]
         self.assertEqual(
             first_model_names,
@@ -774,7 +790,7 @@ class TestGUIComponents(unittest.TestCase):
         # 2. Select scenario at index 1 ("Competitive Exclusion")
         window.param_panel.preset_combo.setCurrentIndex(1)
 
-        # Verify initial states and parameters were automatically updated
+        # Verify initial states and parameters updated automatically
         inputs = window.param_panel.get_simulation_inputs()
         self.assertEqual(inputs["initial_state"], (20, 25))
         self.assertEqual(inputs["params"]["r1"], 0.9)
@@ -923,7 +939,7 @@ class TestGUIComponents(unittest.TestCase):
             self.assertTrue(os.path.isfile(path), f"Missing icon: {path}")
             self.assertGreater(os.path.getsize(path), 50)
 
-        # 2. Verify stylesheets contain modern stepper subcontrol selectors
+        # 2. Verify stylesheets contain stepper subcontrol selectors
         for ss in (LIGHT_STYLESHEET, DARK_STYLESHEET):
             self.assertIn("QSpinBox::up-button", ss)
             self.assertIn("QSpinBox::down-button", ss)

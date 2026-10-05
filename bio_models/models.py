@@ -1,6 +1,7 @@
-"""
-Mathematical Models for Species Interactions and Consumer-Resource Systems.
-Continuous ODE systems and discrete-time recursions.
+"""Mathematical Models for Species Interactions.
+
+Continuous ODE systems and discrete-time recursions for species
+interactions and consumer-resource systems.
 """
 
 from abc import ABC, abstractmethod
@@ -25,7 +26,7 @@ class SimulationResult:
 
 
 class BiologicalModel(ABC):
-    """Abstract base class for two-variable biological interaction models."""
+    """Abstract base class for biological interaction models."""
 
     @property
     @abstractmethod
@@ -47,18 +48,18 @@ class BiologicalModel(ABC):
     @property
     @abstractmethod
     def n1_label(self) -> str:
-        """Label for species/variable 1 (e.g. Prey, Resource, Species 1)."""
+        """Label for species 1 (Prey, Resource, or Species 1)."""
         pass
 
     @property
     @abstractmethod
     def n2_label(self) -> str:
-        """Label for species/variable 2 (e.g. Predator, Species 2)."""
+        """Label for species/variable 2 (Predator or Species 2)."""
         pass
 
     @property
     def num_variables(self) -> int:
-        """Number of state variables in the system (1 or 2). Defaults to 2."""
+        """Number of state variables in system (1 or 2, default 2)."""
         return 2
 
     @property
@@ -75,7 +76,7 @@ class BiologicalModel(ABC):
     @property
     @abstractmethod
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
-        """Metadata for UI generation: label, min, max, step, description."""
+        """Metadata for UI generation: label, min, max, step, desc."""
         pass
 
     @abstractmethod
@@ -98,38 +99,44 @@ class BiologicalModel(ABC):
         n1_range: Tuple[float, float],
         n2_range: Tuple[float, float],
     ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
-        """Return coordinates for nullclines (dn1/dt = 0 and dn2/dt = 0)."""
+        """Return coordinates for nullclines (dn/dt = 0)."""
         return {}
 
 
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # 1. Lotka-Volterra Model of Competition & Multi-Species Interactions
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 class LotkaVolterraCompetitionModel(BiologicalModel):
-    """
-    Two-species competition and multi-species interaction model.
+    """Two-species competition and multi-species interaction model.
+
+    Governing differential equations:
     dn1/dt = r1 * n1 * (1 - (n1 + alpha12 * n2) / K1)
     dn2/dt = r2 * n2 * (1 - (n2 + alpha21 * n1) / K2)
     """
 
     @property
     def name(self) -> str:
+        """Display name of the competition model."""
         return "Lotka-Volterra Competition & Species Interactions"
 
     @property
     def category(self) -> str:
+        """Category for sandwich menu organization."""
         return "Competition & Interactions"
 
     @property
     def n1_label(self) -> str:
+        """Label for species 1 (n1)."""
         return "Species 1 (n₁)"
 
     @property
     def n2_label(self) -> str:
+        """Label for species 2 (n2)."""
         return "Species 2 (n₂)"
 
     @property
     def default_params(self) -> Dict[str, float]:
+        """Default parameter values for stable coexistence."""
         return {
             "r1": 0.8,
             "r2": 0.6,
@@ -141,6 +148,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
 
     @property
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
         return {
             "r1": {
                 "label": "Growth rate sp. 1 (r₁):",
@@ -199,11 +207,12 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
         }
 
     def classify_relationship(self, a12: float, a21: float) -> str:
-        """
-        Classifies interaction type based on pair interaction coefficients:
+        """Classify interaction type based on interaction coefficients.
+
         - Mutualistic: a12 < 0, a21 < 0
         - Commensal: (a12 < 0, a21 == 0) or (a12 == 0, a21 < 0)
-        - Parasitic / Exploitative: (a12 > 0, a21 < 0) or (a12 < 0, a21 > 0)
+        - Parasitic / Exploitative:
+          (a12 > 0, a21 < 0) or (a12 < 0, a21 > 0)
         - Competitive: a12 > 0, a21 > 0
         - Neutral: a12 == 0, a21 == 0
         """
@@ -230,6 +239,7 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
     def rhs(
         self, t: float, state: np.ndarray, params: Dict[str, float]
     ) -> np.ndarray:
+        """Right-hand side of competition ODEs: d[n1, n2]/dt."""
         n1 = max(0.0, float(state[0]))
         n2 = max(0.0, float(state[1]))
         r1, r2 = params["r1"], params["r2"]
@@ -288,12 +298,13 @@ class LotkaVolterraCompetitionModel(BiologicalModel):
         return nullclines
 
 
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # 2. General Consumer-Resource Model
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 class ConsumerResourceModel(BiologicalModel):
-    """
-    General Consumer-Resource Model:
+    """General Consumer-Resource Model.
+
+    Governing differential equations:
     dn1/dt = f(n1) - g(n1, n2)
     dn2/dt = epsilon * g(n1, n2) - h(n2)
     """
@@ -318,26 +329,32 @@ class ConsumerResourceModel(BiologicalModel):
 
     @property
     def name(self) -> str:
+        """Display name of the consumer-resource model."""
         return self._name
 
     @property
     def topic(self) -> str:
+        """High-level umbrella topic for navigation menu."""
         return self._topic
 
     @property
     def category(self) -> str:
+        """Category for sandwich menu organization."""
         return self._category
 
     @property
     def n1_label(self) -> str:
+        """Label for resource/prey variable (n1)."""
         return "Resource / Prey (n₁)"
 
     @property
     def n2_label(self) -> str:
+        """Label for consumer/predator variable (n2)."""
         return "Consumer / Predator (n₂)"
 
     @property
     def default_params(self) -> Dict[str, float]:
+        """Default parameter dictionary for model components."""
         defaults = {
             "theta": 15.0,        # Constant inflow
             "psi": 2.0,           # Constant outflow
@@ -357,6 +374,7 @@ class ConsumerResourceModel(BiologicalModel):
 
     @property
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
         return {
             "theta": {
                 "label": "Constant Inflow (θ):",
@@ -482,7 +500,9 @@ class ConsumerResourceModel(BiologicalModel):
         else:
             return 0.0
 
-    def calc_g(self, n1: float, n2: float, params: Dict[str, float]) -> float:
+    def calc_g(
+        self, n1: float, n2: float, params: Dict[str, float]
+    ) -> float:
         """Resource consumption rate g(n1, n2)."""
         a = params.get("a", 0.1)
         c = params.get("c", 0.1)
@@ -518,6 +538,7 @@ class ConsumerResourceModel(BiologicalModel):
     def rhs(
         self, t: float, state: np.ndarray, params: Dict[str, float]
     ) -> np.ndarray:
+        """Right-hand side of continuous consumer-resource ODEs."""
         n1 = max(0.0, float(state[0]))
         n2 = max(0.0, float(state[1]))
         eps = params.get("epsilon", 0.5)
@@ -552,6 +573,7 @@ class ConsumerResourceModel(BiologicalModel):
         n1_range: Tuple[float, float],
         n2_range: Tuple[float, float],
     ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+        """Return coordinates for consumer-resource nullclines."""
         nullclines = {}
         eps = params.get("epsilon", 0.5)
         n1_pts = np.linspace(
@@ -619,12 +641,13 @@ class ConsumerResourceModel(BiologicalModel):
         return nullclines
 
 
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # Specialized Classic Consumer-Resource Subclasses
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 class ChemostatModel(ConsumerResourceModel):
-    """
-    Nutrient Inflow / Chemostat Model.
+    """Nutrient Inflow / Chemostat Model.
+
+    Governing differential equations:
     dn1/dt = theta - a * c * n1 * n2
     dn2/dt = epsilon * a * c * n1 * n2 - delta * n2
     """
@@ -647,16 +670,19 @@ class ChemostatModel(ConsumerResourceModel):
 
     @property
     def n1_label(self) -> str:
+        """Label for nutrient/resource concentration (n1)."""
         return "Nutrient / Resource Level (n₁)"
 
     @property
     def n2_label(self) -> str:
+        """Label for consumer/algae population (n2)."""
         return "Consumer / Algae Population (n₂)"
 
 
 class LotkaVolterraPredatorPreyModel(ConsumerResourceModel):
-    """
-    Classic Lotka-Volterra Predator-Prey Model.
+    """Classic Lotka-Volterra Predator-Prey Model.
+
+    Governing differential equations:
     dn1/dt = r * n1 - a * c * n1 * n2
     dn2/dt = epsilon * a * c * n1 * n2 - delta * n2
     """
@@ -679,17 +705,19 @@ class LotkaVolterraPredatorPreyModel(ConsumerResourceModel):
 
     @property
     def n1_label(self) -> str:
+        """Label for prey population (n1)."""
         return "Prey Population (n₁)"
 
     @property
     def n2_label(self) -> str:
+        """Label for predator population (n2)."""
         return "Predator Population (n₂)"
 
 
 class RosenzweigMacArthurModel(ConsumerResourceModel):
-    """
-    Logistic prey growth with Holling Type II saturating functional response.
-    Classic demonstration of the Paradox of Enrichment and stable limit cycles.
+    """Prey logistic growth with Holling Type II functional response.
+
+    Classic demonstration of the Paradox of Enrichment and limit cycles.
     """
 
     def __init__(self):
@@ -712,17 +740,19 @@ class RosenzweigMacArthurModel(ConsumerResourceModel):
 
     @property
     def n1_label(self) -> str:
+        """Label for prey population (n1)."""
         return "Prey Population (n₁)"
 
     @property
     def n2_label(self) -> str:
+        """Label for predator population (n2)."""
         return "Predator Population (n₂)"
 
 
 class TypeIIIPredatorPreyModel(ConsumerResourceModel):
-    """
-    Logistic prey growth with Holling Type III sigmoid functional response.
-    Models prey switching and refuges at low prey densities.
+    """Prey logistic growth with Holling Type III sigmoid response.
+
+    Models prey switching and natural refuges at low prey densities.
     """
 
     def __init__(self):
@@ -746,19 +776,21 @@ class TypeIIIPredatorPreyModel(ConsumerResourceModel):
 
     @property
     def n1_label(self) -> str:
+        """Label for prey population (n1)."""
         return "Prey Population (n₁)"
 
     @property
     def n2_label(self) -> str:
+        """Label for predator population (n2)."""
         return "Predator Population (n₂)"
 
 
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # Single-Species Population Growth Models (Otto & Day 2007, Chapter 3)
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 class ExponentialGrowthModel(BiologicalModel):
-    """
-    Classic exponential population growth model (Otto & Day 2007, Sec. 3.2.1).
+    """Classic exponential growth (Otto & Day 2007, Sec. 3.2.1).
+
     Continuous differential equation:
         dn/dt = r * n
     Discrete recursion equation:
@@ -767,30 +799,37 @@ class ExponentialGrowthModel(BiologicalModel):
 
     @property
     def name(self) -> str:
+        """Display name of the exponential model."""
         return "Exponential Growth Model"
 
     @property
     def category(self) -> str:
+        """Category for sandwich menu organization."""
         return "Single-Species Population Growth"
 
     @property
     def num_variables(self) -> int:
+        """Number of state variables in system (single-species)."""
         return 1
 
     @property
     def n1_label(self) -> str:
+        """Label for population density variable (n)."""
         return "Population Density (n)"
 
     @property
     def n2_label(self) -> str:
+        """Label for second species (empty for single-species)."""
         return ""
 
     @property
     def default_params(self) -> Dict[str, float]:
+        """Default parameter set for exponential growth."""
         return {"r": 0.5}
 
     @property
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
         return {
             "r": {
                 "label": "Growth rate (r):",
@@ -827,8 +866,8 @@ class ExponentialGrowthModel(BiologicalModel):
 
 
 class LogisticGrowthModel(BiologicalModel):
-    """
-    Classic logistic population growth model (Otto & Day 2007, Sec. 3.2.2).
+    """Classic logistic population growth (Otto & Day 2007, Sec. 3.2.2).
+
     Continuous differential equation:
         dn/dt = r * n * (1 - n / K)
     Discrete recursion equation:
@@ -837,26 +876,32 @@ class LogisticGrowthModel(BiologicalModel):
 
     @property
     def name(self) -> str:
+        """Display name of the logistic model."""
         return "Logistic Growth Model"
 
     @property
     def category(self) -> str:
+        """Category for sandwich menu organization."""
         return "Single-Species Population Growth"
 
     @property
     def num_variables(self) -> int:
+        """Number of state variables in system (single-species)."""
         return 1
 
     @property
     def n1_label(self) -> str:
+        """Label for population density variable (n)."""
         return "Population Density (n)"
 
     @property
     def n2_label(self) -> str:
+        """Label for second species (empty for single-species)."""
         return ""
 
     @property
     def default_params(self) -> Dict[str, float]:
+        """Default parameter set for logistic growth."""
         return {
             "r": 0.6,
             "K": 100.0,
@@ -864,6 +909,7 @@ class LogisticGrowthModel(BiologicalModel):
 
     @property
     def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
         return {
             "r": {
                 "label": "Growth rate (r):",
@@ -890,7 +936,7 @@ class LogisticGrowthModel(BiologicalModel):
     def rhs(
         self, t: float, state: np.ndarray, params: Dict[str, float]
     ) -> np.ndarray:
-        """Continuous differential equation: dn/dt = r * n * (1 - n / K)."""
+        """Continuous differential equation: dn/dt = r*n*(1 - n/K)."""
         n = max(0.0, float(state[0]))
         r = params.get("r", 0.6)
         k = max(1.0, params.get("K", 100.0))
@@ -902,7 +948,7 @@ class LogisticGrowthModel(BiologicalModel):
     def discrete_step(
         self, state: np.ndarray, params: Dict[str, float]
     ) -> np.ndarray:
-        """Discrete recursion: n(t+1) = n(t) + r * n(t) * (1 - n(t) / K)."""
+        """Discrete recursion: n(t+1) = n(t) + r*n(t)*(1 - n(t)/K)."""
         n = max(0.0, float(state[0]))
         r = params.get("r", 0.6)
         k = max(1.0, params.get("K", 100.0))
