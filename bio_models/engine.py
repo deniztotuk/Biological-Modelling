@@ -39,13 +39,31 @@ def simulate_model(
     valid_t_span = (t_start, t_end)
     t_eval = np.linspace(t_start, t_end, num_points)
 
-    # Species individuals must be positive integers (>= 1)
-    n1_init = float(max(1, int(round(float(initial_state[0])))))
-    n2_init = (
-        0.0
-        if model.is_single_variable
-        else float(max(1, int(round(float(initial_state[1])))))
-    )
+    if getattr(model, "is_frequency_model", False):
+        # Allele frequencies lie in [0.0, 1.0]. Convert initial counts
+        # or proportions into valid frequencies p and q = 1 - p.
+        raw_1 = float(initial_state[0])
+        raw_2 = float(initial_state[1]) if len(initial_state) > 1 else 0.0
+        if (
+            0.0 <= raw_1 <= 1.0
+            and 0.0 <= raw_2 <= 1.0
+            and (raw_1 > 0.0 or raw_2 > 0.0)
+        ):
+            tot = raw_1 + raw_2
+            p_init = raw_1 / tot if tot > 0 else raw_1
+        else:
+            tot = max(1e-9, raw_1 + raw_2)
+            p_init = raw_1 / tot
+        n1_init = float(np.clip(p_init, 0.0, 1.0))
+        n2_init = 1.0 - n1_init
+    else:
+        # Species individuals must be positive integers (>= 1)
+        n1_init = float(max(1, int(round(float(initial_state[0])))))
+        n2_init = (
+            0.0
+            if model.is_single_variable
+            else float(max(1, int(round(float(initial_state[1])))))
+        )
 
     if mode == "discrete":
         # In discrete mode, time advances in integer generation steps.
@@ -90,8 +108,12 @@ def simulate_model(
                 curr = np.nan_to_num(
                     curr, nan=0.0, posinf=1e300, neginf=0.0
                 )
-                curr[0] = max(0.0, curr[0])
-                curr[1] = max(0.0, curr[1])
+                if getattr(model, "is_frequency_model", False):
+                    curr[0] = float(np.clip(curr[0], 0.0, 1.0))
+                    curr[1] = 1.0 - curr[0]
+                else:
+                    curr[0] = max(0.0, curr[0])
+                    curr[1] = max(0.0, curr[1])
                 n1_arr[i] = curr[0]
                 n2_arr[i] = curr[1]
 
@@ -177,12 +199,16 @@ def simulate_model(
                 message=f"Solver error: {sol.message}",
             )
 
-        n1_res = np.maximum(0.0, sol.y[0])
-        n2_res = (
-            np.zeros_like(n1_res)
-            if model.is_single_variable
-            else np.maximum(0.0, sol.y[1])
-        )
+        if getattr(model, "is_frequency_model", False):
+            n1_res = np.clip(sol.y[0], 0.0, 1.0)
+            n2_res = np.clip(1.0 - n1_res, 0.0, 1.0)
+        else:
+            n1_res = np.maximum(0.0, sol.y[0])
+            n2_res = (
+                np.zeros_like(n1_res)
+                if model.is_single_variable
+                else np.maximum(0.0, sol.y[1])
+            )
 
         return SimulationResult(
             t=sol.t,

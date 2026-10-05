@@ -230,7 +230,9 @@ class BioPlotCanvas(QWidget):
             self.canvas.draw()
             return
 
-        if model.is_single_variable:
+        if getattr(model, "is_frequency_model", False):
+            self._update_plot_frequency_model(result, model, colors)
+        elif model.is_single_variable:
             self._update_plot_single_variable(result, model, colors)
         else:
             self._update_plot_two_variable(result, model, colors)
@@ -238,11 +240,19 @@ class BioPlotCanvas(QWidget):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             self.figure.tight_layout(
-                pad=2.2, w_pad=4.5, rect=(0.02, 0.0, 1.0, 1.0)
+                pad=1.8, w_pad=3.2, rect=(0.02, 0.02, 0.98, 0.98)
             )
             self.canvas.draw()
 
-        if model.is_single_variable:
+        if getattr(model, "is_frequency_model", False):
+            p_end = result.n1[-1]
+            q_end = result.n2[-1]
+            dp = p_end - result.n1[0]
+            self.info_lbl.setText(
+                f"{result.message} | Final: p={p_end:.3f}, q={q_end:.3f} "
+                f"(Δp = {dp:+.3f})"
+            )
+        elif model.is_single_variable:
             n_str = _format_density(result.n1[-1])
             if "K" in result.parameters:
                 k_int = int(round(result.parameters["K"]))
@@ -521,6 +531,300 @@ class BioPlotCanvas(QWidget):
                 color=colors["subtext_color"],
             )
             self.ax_phase.set_xlim(left=0, right=grid_max)
+
+        self.ax_phase.grid(
+            True, linestyle="--", alpha=0.5, color=colors["grid"]
+        )
+        leg_phase = self.ax_phase.legend(
+            frameon=True,
+            facecolor=colors["legend_face"],
+            edgecolor=colors["legend_edge"],
+            fontsize=8,
+            loc="upper right",
+        )
+        for text in leg_phase.get_texts():
+            text.set_color(colors["text_color"])
+
+    def _update_plot_frequency_model(
+        self,
+        result: SimulationResult,
+        model: BiologicalModel,
+        colors: dict,
+    ) -> None:
+        # Render allele frequency dynamics and selection phase.
+        t = result.t
+        p_arr = result.n1
+        q_arr = result.n2
+        c1 = colors["n1"]
+        c2 = colors["n2"]
+        params = result.parameters
+        is_disc = result.metadata.get("mode") == "discrete"
+
+        # -------------------------------------------------------------
+        # 1. Left Subplot: Allele Frequency Dynamics Over Time
+        # -------------------------------------------------------------
+        if is_disc:
+            self.ax_time.step(
+                t,
+                p_arr,
+                where="post",
+                color=c1,
+                linewidth=2.2,
+                label=result.n1_label,
+            )
+            self.ax_time.step(
+                t,
+                q_arr,
+                where="post",
+                color=c2,
+                linewidth=2.2,
+                label=result.n2_label,
+            )
+            self.ax_time.fill_between(
+                t, p_arr, step="post", color=c1, alpha=0.12
+            )
+            self.ax_time.fill_between(
+                t, q_arr, step="post", color=c2, alpha=0.12
+            )
+            self.ax_time.plot(
+                t, p_arr, "o", color=c1, markersize=3.5, alpha=0.9
+            )
+            self.ax_time.plot(
+                t, q_arr, "o", color=c2, markersize=3.5, alpha=0.9
+            )
+            self.ax_time.xaxis.set_major_locator(
+                MaxNLocator(integer=True)
+            )
+        else:
+            self.ax_time.plot(
+                t, p_arr, color=c1, linewidth=2.2, label=result.n1_label
+            )
+            self.ax_time.plot(
+                t, q_arr, color=c2, linewidth=2.2, label=result.n2_label
+            )
+            self.ax_time.fill_between(t, p_arr, color=c1, alpha=0.12)
+            self.ax_time.fill_between(t, q_arr, color=c2, alpha=0.12)
+
+        self.ax_time.set_title(
+            "Allele Frequencies (p, q)",
+            fontsize=10.0,
+            fontweight="bold",
+            color=colors["text_color"],
+            pad=8,
+        )
+        time_unit = "Generations (t)" if is_disc else "Time (t)"
+        self.ax_time.set_xlabel(
+            time_unit,
+            fontsize=9.5,
+            fontweight="bold",
+            color=colors["subtext_color"],
+        )
+        self.ax_time.set_ylabel(
+            "Frequency",
+            fontsize=9.5,
+            fontweight="bold",
+            color=colors["subtext_color"],
+        )
+        self.ax_time.set_xlim(left=t[0], right=t[-1])
+        self.ax_time.set_ylim(bottom=-0.02, top=1.05)
+        self.ax_time.grid(
+            True, linestyle="--", alpha=0.5, color=colors["grid"]
+        )
+
+        leg_time = self.ax_time.legend(
+            frameon=True,
+            facecolor=colors["legend_face"],
+            edgecolor=colors["legend_edge"],
+            fontsize=9,
+            loc="upper right",
+        )
+        for text in leg_time.get_texts():
+            text.set_color(colors["text_color"])
+
+        # -------------------------------------------------------------
+        # 2. Right Subplot: Selection Gradient / Discrete Return Map
+        # -------------------------------------------------------------
+        p_grid = np.linspace(0.0, 1.0, 200)
+
+        if is_disc:
+            # Discrete Return Map: p(t+1) vs p(t)
+            next_grid = np.array([
+                model.discrete_step(
+                    np.array([val, 1.0 - val]), params
+                )[0]
+                for val in p_grid
+            ])
+            self.ax_phase.plot(
+                p_grid,
+                p_grid,
+                linestyle="--",
+                color=colors["grid"],
+                linewidth=1.3,
+                label="1:1 Line (p(t+1) = p(t))",
+            )
+            self.ax_phase.plot(
+                p_grid,
+                next_grid,
+                color=c1,
+                linewidth=2.2,
+                label="Return Map p(t+1)",
+            )
+
+            # Markers for start and end points
+            start_p = p_arr[0]
+            end_p = p_arr[-1]
+            next_start = model.discrete_step(
+                np.array([start_p, 1.0 - start_p]), params
+            )[0]
+            next_end = model.discrete_step(
+                np.array([end_p, 1.0 - end_p]), params
+            )[0]
+            self.ax_phase.scatter(
+                [start_p],
+                [next_start],
+                color=colors["start"],
+                s=80,
+                zorder=6,
+                edgecolors="black",
+                linewidths=1.2,
+                label=f"Start (p₀={start_p:.2f})",
+            )
+            self.ax_phase.scatter(
+                [end_p],
+                [next_end],
+                color=colors["end"],
+                s=70,
+                zorder=6,
+                marker="X",
+                edgecolors="black",
+                linewidths=1.2,
+                label=f"End (p={end_p:.2f})",
+            )
+
+            self.ax_phase.set_title(
+                "Return Map: p(t+1)",
+                fontsize=10.0,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=8,
+            )
+            self.ax_phase.set_xlabel(
+                "Current Frequency p(t)",
+                fontsize=9.5,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_ylabel(
+                "Next Frequency p(t+1)",
+                fontsize=9.5,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_xlim(left=0.0, right=1.0)
+            self.ax_phase.set_ylim(bottom=-0.02, top=1.05)
+
+        else:
+            # Continuous Selection Gradient: dp/dt vs p (Figure 3.6)
+            rate_grid = np.array([
+                model.rhs(0.0, np.array([val, 1.0 - val]), params)[0]
+                for val in p_grid
+            ])
+            self.ax_phase.axhline(
+                0.0,
+                linestyle="--",
+                color=colors["grid"],
+                linewidth=1.3,
+                label="Neutral (dp/dt = 0)",
+            )
+            self.ax_phase.plot(
+                p_grid,
+                rate_grid,
+                color=c1,
+                linewidth=2.2,
+                label="Selection Rate dp/dt",
+            )
+
+            # Check for polymorphic equilibrium p* in diploid model
+            if (
+                "W_AA" in params
+                and "W_Aa" in params
+                and "W_aa" in params
+            ):
+                w11 = params["W_AA"]
+                w12 = params["W_Aa"]
+                w22 = params["W_aa"]
+                denom = w11 - 2.0 * w12 + w22
+                if abs(denom) > 1e-6:
+                    p_star = (w22 - w12) / denom
+                    if 0.001 < p_star < 0.999:
+                        self.ax_phase.scatter(
+                            [p_star],
+                            [0.0],
+                            color=colors["isocline1"],
+                            s=75,
+                            zorder=6,
+                            edgecolors="black",
+                            linewidths=1.2,
+                            label=f"Polymorphic p* ({p_star:.2f})",
+                        )
+
+            # Trajectory on rate curve
+            start_p = p_arr[0]
+            end_p = p_arr[-1]
+            r_start = model.rhs(
+                0.0, np.array([start_p, 1.0 - start_p]), params
+            )[0]
+            r_end = model.rhs(
+                0.0, np.array([end_p, 1.0 - end_p]), params
+            )[0]
+            self.ax_phase.scatter(
+                [start_p],
+                [r_start],
+                color=colors["start"],
+                s=80,
+                zorder=6,
+                edgecolors="black",
+                linewidths=1.2,
+                label=f"Start (p₀={start_p:.2f})",
+            )
+            self.ax_phase.scatter(
+                [end_p],
+                [r_end],
+                color=colors["end"],
+                s=70,
+                zorder=6,
+                marker="X",
+                edgecolors="black",
+                linewidths=1.2,
+                label=f"End (p={end_p:.2f})",
+            )
+
+            self.ax_phase.set_title(
+                "Selection Rate: dp/dt",
+                fontsize=10.0,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=8,
+            )
+            self.ax_phase.set_xlabel(
+                "Allele A Frequency (p)",
+                fontsize=9.5,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_ylabel(
+                "Rate of Change (dp/dt)",
+                fontsize=9.5,
+                fontweight="bold",
+                color=colors["subtext_color"],
+            )
+            self.ax_phase.set_xlim(left=0.0, right=1.0)
+            y_min = min(0.0, float(np.min(rate_grid)))
+            y_max = max(0.0, float(np.max(rate_grid)))
+            pad_val = max(0.01, (y_max - y_min) * 0.15)
+            self.ax_phase.set_ylim(
+                bottom=y_min - pad_val, top=y_max + pad_val
+            )
 
         self.ax_phase.grid(
             True, linestyle="--", alpha=0.5, color=colors["grid"]
@@ -858,7 +1162,7 @@ class BioPlotCanvas(QWidget):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", UserWarning)
                     self.figure.tight_layout(
-                        pad=2.2, w_pad=4.5, rect=(0.02, 0.0, 1.0, 1.0)
+                        pad=1.8, w_pad=3.2, rect=(0.02, 0.02, 0.98, 0.98)
                     )
                     self.canvas.draw_idle()
             except Exception:

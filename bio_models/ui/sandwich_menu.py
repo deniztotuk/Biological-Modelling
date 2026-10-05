@@ -109,11 +109,13 @@ class SandwichDrawer(QFrame):
         # Topic and category display order
         topic_order = [
             "Ecology Models",
+            "Evolution Models",
         ]
         category_order = [
             "Single-Species Population Growth",
             "Competition & Interactions",
             "Consumer-Resource Models",
+            "Natural Selection Models",
         ]
 
         # Group models by topic -> category -> list of models

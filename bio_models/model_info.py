@@ -224,6 +224,75 @@ MODEL_DETAILS: Dict[str, Dict[str, Any]] = {
             "overshoots, stable limit cycles, and deterministic chaos."
         ),
     },
+    "Haploid Selection Model": {
+        "title": "Haploid Natural Selection (Otto & Day 2007, Sec. 3.3.1)",
+        "diff_eq_type": (
+            "Ordinary Differential Equation (Continuous Allele Dynamics)"
+        ),
+        "diff_eq": [
+            "dp/dt = s_c · p · (1 - p),  where s_c = (W_A - W_a) / W_a",
+            "dq/dt = -dp/dt",
+        ],
+        "disc_eq_type": "Discrete Generation Difference Equation (Recursion)",
+        "disc_eq": [
+            "p(t+1) = W_A · p(t) / (W_A · p(t) + W_a · (1 - p(t)))",
+            "q(t+1) = 1 - p(t+1)",
+        ],
+        "scenarios": (
+            "Models the change in frequency of two alleles (A and a) in a "
+            "haploid or asexual population due to differences in reproductive "
+            "fitness (W_A and W_a). Primary biological scenarios include:<br>"
+            "• <b>Directional Selection</b>: If allele A confers a fitness "
+            "advantage (W_A &gt; W_a), its frequency p steadily increases "
+            "toward fixation (p = 1).<br>"
+            "• <b>Deleterious Allele Purging</b>: If allele A reduces fitness "
+            "(W_A &lt; W_a), natural selection steadily purges it from the "
+            "population.<br>"
+            "• <b>Neutral Evolution</b>: When fitnesses are equal "
+            "(W_A = W_a), allele frequencies remain constant over time.<br>"
+            "• <b>Selective Sweep</b>: Strong selection coefficients produce "
+            "rapid fixation within very few generations."
+        ),
+    },
+    "Diploid Selection Model": {
+        "title": (
+            "Diploid Natural Selection & Gamete Union "
+            "(Otto & Day 2007, Sec. 3.3.2)"
+        ),
+        "diff_eq_type": (
+            "Nonlinear Differential Equation (Genotype Fitness Marginals)"
+        ),
+        "diff_eq": [
+            "dp/dt = (p·(1-p)/W̄) · [p·(W_AA - W_Aa) + (1-p)·(W_Aa - W_aa)]",
+            "W̄ = p²·W_AA + 2p(1-p)·W_Aa + (1-p)²·W_aa",
+        ],
+        "disc_eq_type": (
+            "Discrete Generation Recursion (Hardy-Weinberg Union & Meiosis)"
+        ),
+        "disc_eq": [
+            "p(t+1) = [p(t)²·W_AA + p(t)·(1-p(t))·W_Aa] / W̄(t)",
+            "W̄(t) = p(t)²·W_AA + 2p(t)·(1-p(t))·W_Aa + (1-p(t))²·W_aa",
+        ],
+        "scenarios": (
+            "Models selection on two alleles in a diploid sexual population "
+            "with random mating, where genotype fitnesses (W_AA, W_Aa, W_aa) "
+            "govern survival and fertility. Primary biological scenarios "
+            "include:<br>"
+            "• <b>Directional Selection</b>: Additive advantage "
+            "(W_AA &gt; W_Aa &gt; W_aa) drives allele A to fixation.<br>"
+            "• <b>Heterozygote Advantage (Overdominance)</b>: When "
+            "heterozygotes are fittest (W_Aa &gt; W_AA, W_aa), selection "
+            "maintains both alleles at a stable internal polymorphism (e.g. "
+            "sickle-cell anemia).<br>"
+            "• <b>Heterozygote Disadvantage (Underdominance)</b>: When "
+            "heterozygotes have reduced fitness, an unstable equilibrium "
+            "exists, causing disruptive selection toward whichever allele "
+            "starts above the threshold.<br>"
+            "• <b>Dominance and Recessiveness</b>: Recessive advantageous "
+            "alleles rise slowly when rare, whereas dominant ones rise fast "
+            "but fix slowly."
+        ),
+    },
 }
 
 

@@ -68,6 +68,11 @@ class BiologicalModel(ABC):
         return self.num_variables == 1
 
     @property
+    def is_frequency_model(self) -> bool:
+        """Return True if model tracks allele frequencies in [0, 1]."""
+        return False
+
+    @property
     @abstractmethod
     def default_params(self) -> Dict[str, float]:
         """Default parameter values."""
@@ -958,6 +963,256 @@ class LogisticGrowthModel(BiologicalModel):
         return np.array([n_next], dtype=float)
 
 
+# ---------------------------------------------------------------------
+# 8. Haploid Model of Natural Selection
+# ---------------------------------------------------------------------
+class HaploidSelectionModel(BiologicalModel):
+    """Haploid model of natural selection (Otto & Day 2007, Sec. 3.3.1).
+
+    Tracks allele frequencies p (allele A) and q = 1 - p (allele a)
+    under differential reproductive fitnesses W_A and W_a.
+
+    Continuous differential equation (Eq. 3.11b):
+        dp/dt = s_c * p * (1 - p), where s_c = (W_A - W_a) / W_a
+        dq/dt = -dp/dt
+
+    Discrete recursion equation (Eq. 3.8c):
+        p(t+1) = W_A * p / (W_A * p + W_a * (1 - p))
+        q(t+1) = 1 - p(t+1)
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Evolution Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Natural Selection Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the haploid selection model."""
+        return "Haploid Selection Model"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (p and q)."""
+        return 2
+
+    @property
+    def is_frequency_model(self) -> bool:
+        """Return True for frequency-based population genetic model."""
+        return True
+
+    @property
+    def n1_label(self) -> str:
+        """Label for allele A frequency (p)."""
+        return "Allele A Frequency (p)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for allele a frequency (q)."""
+        return "Allele a Frequency (q)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default parameter set for haploid selection."""
+        return {
+            "W_A": 1.20,
+            "W_a": 1.00,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
+        return {
+            "W_A": {
+                "label": "Fitness Allele A (W_A):",
+                "min": 0.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Absolute or relative reproductive fitness of allele A"
+                ),
+            },
+            "W_a": {
+                "label": "Fitness Allele a (W_a):",
+                "min": 0.01,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Absolute or relative reproductive fitness of allele a"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Continuous differential equation: dp/dt = s_c * p * (1 - p)."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        w_a = params.get("W_A", 1.20)
+        w_b = max(1e-9, params.get("W_a", 1.00))
+        # Continuous selection coefficient s_c = (W_A - W_a) / W_a
+        s_c = (w_a - w_b) / w_b
+        dp_dt = s_c * p * (1.0 - p)
+        return np.array([dp_dt, -dp_dt], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: p(t+1) = W_A*p / (W_A*p + W_a*(1-p))."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        w_a = max(0.0, params.get("W_A", 1.20))
+        w_b = max(0.0, params.get("W_a", 1.00))
+        denom = w_a * p + w_b * (1.0 - p)
+        if denom <= 1e-12:
+            p_next = p
+        else:
+            p_next = (w_a * p) / denom
+        p_next = float(np.clip(p_next, 0.0, 1.0))
+        return np.array([p_next, 1.0 - p_next], dtype=float)
+
+
+# ---------------------------------------------------------------------
+# 9. Diploid Model of Natural Selection
+# ---------------------------------------------------------------------
+class DiploidSelectionModel(BiologicalModel):
+    """Diploid model of natural selection (Otto & Day 2007, Sec. 3.3.2).
+
+    Tracks allele frequencies p (allele A) and q = 1 - p (allele a)
+    across three genotypes (AA, Aa, aa) uniting under random mating.
+
+    Mean population fitness (Eq. 3.12):
+        W̄ = p² * W_AA + 2*p*(1-p) * W_Aa + (1-p)² * W_aa
+
+    Continuous differential equation:
+        dp/dt = (p*(1-p)/W̄) * [p*(W_AA - W_Aa) + (1-p)*(W_Aa - W_aa)]
+        dq/dt = -dp/dt
+
+    Discrete recursion equation (Eq. 3.13a):
+        p(t+1) = [p² * W_AA + p*(1-p) * W_Aa] / W̄
+        q(t+1) = 1 - p(t+1)
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Evolution Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Natural Selection Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the diploid selection model."""
+        return "Diploid Selection Model"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (p and q)."""
+        return 2
+
+    @property
+    def is_frequency_model(self) -> bool:
+        """Return True for frequency-based population genetic model."""
+        return True
+
+    @property
+    def n1_label(self) -> str:
+        """Label for allele A frequency (p)."""
+        return "Allele A Frequency (p)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for allele a frequency (q)."""
+        return "Allele a Frequency (q)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default parameter set for diploid selection."""
+        return {
+            "W_AA": 1.20,
+            "W_Aa": 1.10,
+            "W_aa": 1.00,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
+        return {
+            "W_AA": {
+                "label": "Fitness AA Homozygote (W_AA):",
+                "min": 0.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Viability and fertility fitness of AA homozygotes"
+                ),
+            },
+            "W_Aa": {
+                "label": "Fitness Aa Heterozygote (W_Aa):",
+                "min": 0.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Viability and fertility fitness of Aa heterozygotes"
+                ),
+            },
+            "W_aa": {
+                "label": "Fitness aa Homozygote (W_aa):",
+                "min": 0.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Viability and fertility fitness of aa homozygotes"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Continuous differential equation for diploid selection."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        q = 1.0 - p
+        w_aa = max(0.0, params.get("W_AA", 1.20))
+        w_ab = max(0.0, params.get("W_Aa", 1.10))
+        w_bb = max(0.0, params.get("W_aa", 1.00))
+
+        w_bar = (p ** 2) * w_aa + 2.0 * p * q * w_ab + (q ** 2) * w_bb
+        if w_bar <= 1e-12:
+            return np.array([0.0, 0.0], dtype=float)
+
+        dp_dt = (p * q / w_bar) * (
+            p * (w_aa - w_ab) + q * (w_ab - w_bb)
+        )
+        return np.array([dp_dt, -dp_dt], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: p(t+1) = [p²*W_AA + p*q*W_Aa] / W̄."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        q = 1.0 - p
+        w_aa = max(0.0, params.get("W_AA", 1.20))
+        w_ab = max(0.0, params.get("W_Aa", 1.10))
+        w_bb = max(0.0, params.get("W_aa", 1.00))
+
+        w_bar = (p ** 2) * w_aa + 2.0 * p * q * w_ab + (q ** 2) * w_bb
+        if w_bar <= 1e-12:
+            p_next = p
+        else:
+            p_next = ((p ** 2) * w_aa + p * q * w_ab) / w_bar
+
+        p_next = float(np.clip(p_next, 0.0, 1.0))
+        return np.array([p_next, 1.0 - p_next], dtype=float)
+
+
 # Registry of available models for the sandwich menu
 AVAILABLE_MODELS: List[BiologicalModel] = [
     LotkaVolterraCompetitionModel(),
@@ -974,4 +1229,6 @@ AVAILABLE_MODELS: List[BiologicalModel] = [
         g_type="type_2_saturating",
         h_type="density_dependent_death",
     ),
+    HaploidSelectionModel(),
+    DiploidSelectionModel(),
 ]

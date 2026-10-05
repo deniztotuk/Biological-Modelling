@@ -360,4 +360,134 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
     ],
+    "Haploid Selection Model": [
+        {
+            "name": "Directional Selection (Advantageous A)",
+            "description": (
+                "Allele A has higher reproductive fitness (W_A > W_a) and "
+                "steadily rises to complete fixation (p = 1)."
+            ),
+            "initial": (5, 95),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_A": 1.25,
+                "W_a": 1.00,
+            },
+        },
+        {
+            "name": "Deleterious Allele Purging",
+            "description": (
+                "Allele A has lower fitness (W_A < W_a) and is purged by "
+                "natural selection (p decays toward 0)."
+            ),
+            "initial": (80, 20),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_A": 0.80,
+                "W_a": 1.00,
+            },
+        },
+        {
+            "name": "Neutral Drift / Equal Fitness",
+            "description": (
+                "Both alleles have identical fitness (W_A = W_a = 1.0), "
+                "maintaining constant frequencies across generations."
+            ),
+            "initial": (50, 50),
+            "t_span": (0.0, 30.0),
+            "params": {
+                "W_A": 1.00,
+                "W_a": 1.00,
+            },
+        },
+        {
+            "name": "Strong Selective Sweep",
+            "description": (
+                "Strong positive selection (W_A = 2.0 vs W_a = 1.0) "
+                "drives rare allele A to fixation within a few steps."
+            ),
+            "initial": (1, 99),
+            "t_span": (0.0, 20.0),
+            "params": {
+                "W_A": 2.00,
+                "W_a": 1.00,
+            },
+        },
+    ],
+    "Diploid Selection Model": [
+        {
+            "name": "Directional Selection (Advantageous A)",
+            "description": (
+                "Additive selection (W_AA > W_Aa > W_aa) where beneficial "
+                "allele A rises monotonically toward fixation."
+            ),
+            "initial": (5, 95),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "W_AA": 1.30,
+                "W_Aa": 1.15,
+                "W_aa": 1.00,
+            },
+        },
+        {
+            "name": "Heterozygote Advantage (Balanced Polymorphism)",
+            "description": (
+                "Overdominance (W_Aa > W_AA, W_aa) maintains both alleles "
+                "at a stable polymorphic internal equilibrium (e.g. "
+                "sickle-cell anemia)."
+            ),
+            "initial": (15, 85),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "W_AA": 0.90,
+                "W_Aa": 1.20,
+                "W_aa": 0.60,
+            },
+        },
+        {
+            "name": "Heterozygote Disadvantage (Disruptive Selection)",
+            "description": (
+                "Underdominance (W_Aa < W_AA, W_aa) creates an unstable "
+                "internal equilibrium; populations fix for whichever "
+                "allele is initially more common."
+            ),
+            "initial": (55, 45),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_AA": 1.15,
+                "W_Aa": 0.80,
+                "W_aa": 1.15,
+            },
+        },
+        {
+            "name": "Recessive Beneficial Allele",
+            "description": (
+                "Allele A is beneficial only in homozygotes (W_AA > W_Aa "
+                "= W_aa); initial rise is slow, then sweeps rapidly once "
+                "common."
+            ),
+            "initial": (5, 95),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "W_AA": 1.30,
+                "W_Aa": 1.00,
+                "W_aa": 1.00,
+            },
+        },
+        {
+            "name": "Dominant Beneficial Allele",
+            "description": (
+                "Allele A is dominant (W_AA = W_Aa > W_aa); rises rapidly "
+                "from rarity but slows down near fixation as recessive a "
+                "hides in heterozygotes."
+            ),
+            "initial": (5, 95),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "W_AA": 1.25,
+                "W_Aa": 1.25,
+                "W_aa": 1.00,
+            },
+        },
+    ],
 }

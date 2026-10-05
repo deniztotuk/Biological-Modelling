@@ -457,6 +457,100 @@ class TestBioModels(unittest.TestCase):
                 self.assertTrue(np.all(np.isfinite(res.n2)))
                 self.assertTrue(np.all(res.n2 >= 0.0))
 
+    def test_haploid_selection_model(self):
+        """Verify Haploid Selection dynamics in continuous and discrete."""
+        from bio_models.models import HaploidSelectionModel
+
+        model = HaploidSelectionModel()
+        self.assertEqual(model.topic, "Evolution Models")
+        self.assertEqual(model.category, "Natural Selection Models")
+        self.assertTrue(model.is_frequency_model)
+
+        # 1. Continuous directional selection: W_A > W_a => p increases
+        res_cont = simulate_model(
+            model=model,
+            initial_state=(0.05, 0.95),
+            t_span=(0.0, 30.0),
+            num_points=150,
+            params={"W_A": 1.25, "W_a": 1.00},
+            mode="continuous",
+        )
+        self.assertTrue(res_cont.success)
+        self.assertAlmostEqual(res_cont.n1[0], 0.05, places=3)
+        self.assertAlmostEqual(res_cont.n2[0], 0.95, places=3)
+        self.assertGreater(res_cont.n1[-1], res_cont.n1[0])
+        self.assertTrue(np.allclose(res_cont.n1 + res_cont.n2, 1.0))
+
+        # 2. Discrete recursion matching analytical formula
+        # p(1) = W_A * p0 / (W_A * p0 + W_a * (1 - p0))
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(0.20, 0.80),
+            t_span=(0.0, 5.0),
+            params={"W_A": 1.50, "W_a": 1.00},
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        expected_p1 = (1.50 * 0.20) / (1.50 * 0.20 + 1.00 * 0.80)
+        self.assertAlmostEqual(res_disc.n1[1], expected_p1, places=4)
+        self.assertAlmostEqual(res_disc.n2[1], 1.0 - expected_p1, places=4)
+
+        # 3. Neutral evolution: W_A == W_a => p remains constant
+        res_neutral = simulate_model(
+            model=model,
+            initial_state=(0.40, 0.60),
+            t_span=(0.0, 10.0),
+            params={"W_A": 1.00, "W_a": 1.00},
+            mode="discrete",
+        )
+        self.assertTrue(res_neutral.success)
+        self.assertAlmostEqual(res_neutral.n1[-1], 0.40, places=4)
+
+    def test_diploid_selection_model(self):
+        """Verify Diploid Selection dynamics and overdominance."""
+        from bio_models.models import DiploidSelectionModel
+
+        model = DiploidSelectionModel()
+        self.assertEqual(model.topic, "Evolution Models")
+        self.assertEqual(model.category, "Natural Selection Models")
+        self.assertTrue(model.is_frequency_model)
+
+        # 1. Overdominance (heterozygote advantage) stable polymorphism
+        # W_AA = 0.9, W_Aa = 1.2, W_aa = 0.6
+        # Expected p* = (W_aa - W_Aa) / (W_AA - 2*W_Aa + W_aa)
+        # = (0.6 - 1.2) / (0.9 - 2.4 + 0.6) = -0.6 / -0.9 = 2/3 ≈ 0.6667
+        res_poly = simulate_model(
+            model=model,
+            initial_state=(0.10, 0.90),
+            t_span=(0.0, 50.0),
+            num_points=200,
+            params={"W_AA": 0.90, "W_Aa": 1.20, "W_aa": 0.60},
+            mode="continuous",
+        )
+        self.assertTrue(res_poly.success)
+        self.assertAlmostEqual(res_poly.n1[-1], 2.0 / 3.0, delta=0.02)
+        self.assertAlmostEqual(res_poly.n2[-1], 1.0 / 3.0, delta=0.02)
+
+        # 2. Discrete recursion formula check:
+        # W_bar = p0^2 * W_AA + 2*p0*q0 * W_Aa + q0^2 * W_aa
+        # p1 = (p0^2 * W_AA + p0*q0 * W_Aa) / W_bar
+        p0 = 0.30
+        q0 = 0.70
+        w_aa, w_ab, w_bb = 1.30, 1.15, 1.00
+        w_bar = (p0 ** 2) * w_aa + 2.0 * p0 * q0 * w_ab + (q0 ** 2) * w_bb
+        expected_p1 = ((p0 ** 2) * w_aa + p0 * q0 * w_ab) / w_bar
+
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(p0, q0),
+            t_span=(0.0, 5.0),
+            params={"W_AA": w_aa, "W_Aa": w_ab, "W_aa": w_bb},
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.n1[1], expected_p1, places=4)
+        self.assertAlmostEqual(res_disc.n2[1], 1.0 - expected_p1, places=4)
+
 
 class TestGUIComponents(unittest.TestCase):
     """Test GUI components and user interaction workflows."""
@@ -744,32 +838,51 @@ class TestGUIComponents(unittest.TestCase):
         window.show()
         drawer = window.drawer
 
-        # Verify topic header exists
+        # Verify both topic headers exist
         topic_btns = [
             btn for btn in drawer.findChildren(QPushButton)
             if btn.objectName() == "DrawerTopic"
         ]
-        self.assertEqual(len(topic_btns), 1)
+        self.assertEqual(len(topic_btns), 2)
         eco_btn = topic_btns[0]
         self.assertIn("Ecology Models", eco_btn.text())
+        evo_btn = topic_btns[1]
+        self.assertIn("Evolution Models", evo_btn.text())
 
-        # Initially, topic umbrella is collapsed
+        # Initially, topic umbrellas are collapsed
         self.assertFalse(drawer.is_topic_expanded("Ecology Models"))
         container = drawer._topic_containers["Ecology Models"]
         self.assertFalse(container.isVisible())
         self.assertIn("▸", eco_btn.text())
 
-        # Click on topic name to expand and make models appear
+        # Click on Ecology Models to expand and make models appear
         eco_btn.click()
         self.assertTrue(drawer.is_topic_expanded("Ecology Models"))
         self.assertTrue(container.isVisible())
         self.assertIn("▾", eco_btn.text())
 
-        # Click topic name again to collapse
+        # Click Ecology Models again to collapse
         eco_btn.click()
         self.assertFalse(drawer.is_topic_expanded("Ecology Models"))
         self.assertFalse(container.isVisible())
         self.assertIn("▸", eco_btn.text())
+
+        # Click on Evolution Models to expand
+        self.assertFalse(drawer.is_topic_expanded("Evolution Models"))
+        evo_container = drawer._topic_containers["Evolution Models"]
+        self.assertFalse(evo_container.isVisible())
+        self.assertIn("▸", evo_btn.text())
+
+        evo_btn.click()
+        self.assertTrue(drawer.is_topic_expanded("Evolution Models"))
+        self.assertTrue(evo_container.isVisible())
+        self.assertIn("▾", evo_btn.text())
+
+        # Click Evolution Models again to collapse
+        evo_btn.click()
+        self.assertFalse(drawer.is_topic_expanded("Evolution Models"))
+        self.assertFalse(evo_container.isVisible())
+        self.assertIn("▸", evo_btn.text())
 
         window.close()
 

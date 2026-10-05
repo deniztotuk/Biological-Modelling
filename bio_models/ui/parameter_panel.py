@@ -342,13 +342,20 @@ class ParameterPanel(QWidget):
         elif self.model.name == "Logistic Growth Model":
             default_n1 = 5
             default_tend = 20.0
+        elif getattr(self.model, "is_frequency_model", False):
+            default_n1 = 20
+            default_tend = 40.0
         else:
             default_n1 = 25
             default_tend = 50.0
         self.n1_init_spin.setValue(default_n1)
         self.n1_init_spin.setSingleStep(1)
-        self.n1_init_spin.setToolTip(
-            "Initial population count (must be a positive integer ≥ 1)")
+        tip1 = (
+            "Initial count of allele A carriers (p₀ = nA / (nA + na))"
+            if getattr(self.model, "is_frequency_model", False)
+            else "Initial population count (must be a positive integer ≥ 1)"
+        )
+        self.n1_init_spin.setToolTip(tip1)
         sim_layout.addWidget(self.n1_init_spin, 0, 1)
 
         row_idx = 1
@@ -359,10 +366,22 @@ class ParameterPanel(QWidget):
             )
             self.n2_init_spin = QSpinBox()
             self.n2_init_spin.setRange(1, 1000000)
-            self.n2_init_spin.setValue(15)
+            default_n2 = (
+                80
+                if getattr(self.model, "is_frequency_model", False)
+                else 15
+            )
+            self.n2_init_spin.setValue(default_n2)
             self.n2_init_spin.setSingleStep(1)
-            self.n2_init_spin.setToolTip(
-                "Initial population count (must be a positive integer ≥ 1)")
+            tip2 = (
+                "Initial count of allele a carriers (q₀ = na / (nA + na))"
+                if getattr(self.model, "is_frequency_model", False)
+                else (
+                    "Initial population count (must be a positive "
+                    "integer ≥ 1)"
+                )
+            )
+            self.n2_init_spin.setToolTip(tip2)
             sim_layout.addWidget(self.n2_init_spin, row_idx, 1)
             row_idx += 1
         else:
