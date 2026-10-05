@@ -766,7 +766,7 @@ class TestGUIComponents(unittest.TestCase):
         QApplication.processEvents()
 
         # 1. Default resolution (1340x820)
-        self.assertGreaterEqual(window.drawer.width(), 350)
+        self.assertGreaterEqual(window.drawer.width(), 340)
         self.assertEqual(window.drawer.width(),
                          window.drawer.optimal_expanded_width)
         hbar = window.drawer.scroll_area.horizontalScrollBar()

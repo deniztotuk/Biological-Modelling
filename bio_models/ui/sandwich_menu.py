@@ -35,8 +35,8 @@ class SandwichDrawer(QFrame):
     # (model, mode: 'continuous' or 'discrete')
     model_selected = pyqtSignal(BiologicalModel, str)
 
-    DEFAULT_EXPANDED_WIDTH = 360
-    MIN_EXPANDED_WIDTH = 260
+    DEFAULT_EXPANDED_WIDTH = 345
+    MIN_EXPANDED_WIDTH = 250
 
     def _get_drawer_width(self) -> int:
         return self.width()
@@ -241,27 +241,27 @@ class SandwichDrawer(QFrame):
         max_btn_w = 0
         for btn, _, _ in self._buttons:
             fm = btn.fontMetrics()
-            btn_w = fm.horizontalAdvance(btn.text()) + 40
+            btn_w = fm.horizontalAdvance(btn.text()) + 28
             if btn_w > max_btn_w:
                 max_btn_w = btn_w
 
         for cat_lbl in self.findChildren(QLabel):
             if cat_lbl.objectName() == "DrawerCategory":
                 fm = cat_lbl.fontMetrics()
-                cat_w = fm.horizontalAdvance(cat_lbl.text()) + 40
+                cat_w = fm.horizontalAdvance(cat_lbl.text()) + 28
                 if cat_w > max_btn_w:
                     max_btn_w = cat_w
 
         for topic_btn in self.findChildren(QPushButton):
             if topic_btn.objectName() == "DrawerTopic":
                 fm = topic_btn.fontMetrics()
-                top_w = fm.horizontalAdvance(topic_btn.text()) + 36
+                top_w = fm.horizontalAdvance(topic_btn.text()) + 26
                 if top_w > max_btn_w:
                     max_btn_w = top_w
 
-        # Ensure clearance for vertical scrollbar (16-20px) and margins
+        # Compact width positioned snug against the longest label.
         self._optimal_expanded_width = max(
-            max_btn_w + 24, self.DEFAULT_EXPANDED_WIDTH
+            max_btn_w, self.DEFAULT_EXPANDED_WIDTH
         )
         self._expanded_width = self._optimal_expanded_width
 
