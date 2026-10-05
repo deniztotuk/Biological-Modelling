@@ -3,7 +3,7 @@ Sandwich / Hamburger Drawer Menu for Model Selection.
 Allows toggling and selecting between competition and consumer-resource models.
 """
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from PyQt6.QtCore import (
     QEasingCurve,
     QPropertyAnimation,
@@ -51,9 +51,12 @@ class SandwichDrawer(QFrame):
         self.setObjectName("SandwichDrawer")
         self._is_collapsed = False
         self._buttons: List[Tuple[QPushButton, BiologicalModel, str]] = []
+        self._topic_buttons: Dict[str, QPushButton] = {}
+        self._topic_containers: Dict[str, QWidget] = {}
         self._active_button: Optional[QPushButton] = None
         self._scroll_content: Optional[QWidget] = None
         self.anim: Optional[QPropertyAnimation] = None
+        self._last_window_width: int = 1340
 
         self._optimal_expanded_width = self.DEFAULT_EXPANDED_WIDTH
         self._min_expanded_width = self.MIN_EXPANDED_WIDTH
@@ -103,43 +106,87 @@ class SandwichDrawer(QFrame):
         content_layout.setContentsMargins(0, 8, 0, 16)
         content_layout.setSpacing(0)
 
-        # Categorize models in desired drawer menu order
+        # Topic and category display order
+        topic_order = [
+            "Ecology Models",
+        ]
         category_order = [
             "Single-Species Population Growth",
             "Competition & Interactions",
             "Consumer-Resource Models",
         ]
 
-        models_by_cat = {}
+        # Group models by topic -> category -> list of models
+        models_by_topic: Dict[str, Dict[str, List[BiologicalModel]]] = {}
         for m in AVAILABLE_MODELS:
-            models_by_cat.setdefault(m.category, []).append(m)
+            top = getattr(m, "topic", "Ecology Models")
+            cat_map = models_by_topic.setdefault(top, {})
+            cat_map.setdefault(m.category, []).append(m)
 
-        ordered_categories = sorted(
-            models_by_cat.keys(),
-            key=lambda cat: (
-                category_order.index(cat)
-                if cat in category_order
-                else len(category_order)
+        ordered_topics = sorted(
+            models_by_topic.keys(),
+            key=lambda t: (
+                topic_order.index(t)
+                if t in topic_order
+                else len(topic_order)
             ),
         )
 
-        for category in ordered_categories:
-            models = models_by_cat[category]
-            cat_label = QLabel(category)
-            cat_label.setObjectName("DrawerCategory")
-            content_layout.addWidget(cat_label)
+        for topic in ordered_topics:
+            # Topic header button (collapsible umbrella)
+            topic_btn = QPushButton(f"▸  {topic}")
+            topic_btn.setObjectName("DrawerTopic")
+            topic_btn.setProperty("class", "DrawerTopicButton")
+            topic_btn.setProperty("expanded", "false")
+            topic_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            content_layout.addWidget(topic_btn)
 
-            for model in models:
-                # Add continuous button
-                btn = QPushButton(f"  • {model.name}")
-                btn.setProperty("class", "ModelNavButton")
-                btn.clicked.connect(
-                    lambda checked, m=model: self._handle_selection(
-                        m, "continuous"
+            # Container widget for categories and models in this topic
+            topic_container = QWidget()
+            topic_container.setObjectName("DrawerTopicContainer")
+            topic_layout = QVBoxLayout(topic_container)
+            topic_layout.setContentsMargins(0, 0, 0, 4)
+            topic_layout.setSpacing(0)
+
+            cats_in_topic = models_by_topic[topic]
+            ordered_cats = sorted(
+                cats_in_topic.keys(),
+                key=lambda cat: (
+                    category_order.index(cat)
+                    if cat in category_order
+                    else len(category_order)
+                ),
+            )
+
+            for category in ordered_cats:
+                models = cats_in_topic[category]
+                cat_label = QLabel(category)
+                cat_label.setObjectName("DrawerCategory")
+                topic_layout.addWidget(cat_label)
+
+                for model in models:
+                    btn = QPushButton(f"  • {model.name}")
+                    btn.setProperty("class", "ModelNavButton")
+                    btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                    btn.clicked.connect(
+                        lambda checked, m=model: self._handle_selection(
+                            m, "continuous"
+                        )
                     )
-                )
-                content_layout.addWidget(btn)
-                self._buttons.append((btn, model, "continuous"))
+                    topic_layout.addWidget(btn)
+                    self._buttons.append((btn, model, "continuous"))
+
+            # Start collapsed: models appear when user clicks on topic name
+            topic_container.setVisible(False)
+            content_layout.addWidget(topic_container)
+
+            self._topic_buttons[topic] = topic_btn
+            self._topic_containers[topic] = topic_container
+
+            # Wire click to toggle topic
+            topic_btn.clicked.connect(
+                lambda checked, t=topic: self.toggle_topic(t)
+            )
 
         content_layout.addStretch()
         self.scroll_area.setWidget(self._scroll_content)
@@ -150,6 +197,41 @@ class SandwichDrawer(QFrame):
             first_btn, first_model, first_mode = self._buttons[0]
             self._set_active_button(first_btn)
 
+    def toggle_topic(self, topic: str):
+        """Toggle expansion of the given topic umbrella."""
+        container = self._topic_containers.get(topic)
+        btn = self._topic_buttons.get(topic)
+        if not container or not btn:
+            return
+
+        is_now_visible = not container.isVisible()
+        container.setVisible(is_now_visible)
+        btn.setText(f"▾  {topic}" if is_now_visible else f"▸  {topic}")
+        btn.setProperty("expanded", "true" if is_now_visible else "false")
+        btn.style().unpolish(btn)
+        btn.style().polish(btn)
+
+        self._calculate_optimal_width()
+        if hasattr(self, "_last_window_width"):
+            self.adapt_to_window_width(self._last_window_width)
+
+    def expand_topic(self, topic: str):
+        """Expand the given topic umbrella if collapsed."""
+        container = self._topic_containers.get(topic)
+        if container and not container.isVisible():
+            self.toggle_topic(topic)
+
+    def collapse_topic(self, topic: str):
+        """Collapse the given topic umbrella if expanded."""
+        container = self._topic_containers.get(topic)
+        if container and container.isVisible():
+            self.toggle_topic(topic)
+
+    def is_topic_expanded(self, topic: str) -> bool:
+        """Return True if the topic umbrella is currently expanded."""
+        container = self._topic_containers.get(topic)
+        return container.isVisible() if container else False
+
     def _calculate_optimal_width(self):
         """Calculate optimal width to fit all model names without any
         horizontal scrollbar.
@@ -157,17 +239,23 @@ class SandwichDrawer(QFrame):
         max_btn_w = 0
         for btn, _, _ in self._buttons:
             fm = btn.fontMetrics()
-            # padding (16 left + 16 right) + left indicator
-            btn_w = fm.horizontalAdvance(btn.text()) + 36
+            btn_w = fm.horizontalAdvance(btn.text()) + 40
             if btn_w > max_btn_w:
                 max_btn_w = btn_w
 
         for cat_lbl in self.findChildren(QLabel):
             if cat_lbl.objectName() == "DrawerCategory":
                 fm = cat_lbl.fontMetrics()
-                cat_w = fm.horizontalAdvance(cat_lbl.text()) + 32
+                cat_w = fm.horizontalAdvance(cat_lbl.text()) + 40
                 if cat_w > max_btn_w:
                     max_btn_w = cat_w
+
+        for topic_btn in self.findChildren(QPushButton):
+            if topic_btn.objectName() == "DrawerTopic":
+                fm = topic_btn.fontMetrics()
+                top_w = fm.horizontalAdvance(topic_btn.text()) + 36
+                if top_w > max_btn_w:
+                    max_btn_w = top_w
 
         # Ensure clearance for vertical scrollbar (16-20px) and margins
         self._optimal_expanded_width = max(
@@ -184,6 +272,7 @@ class SandwichDrawer(QFrame):
           gracefully shrinks down to min_expanded_width, allowing the
           horizontal scrollbar to appear as needed.
         """
+        self._last_window_width = window_width
         if window_width >= 1300:
             target_w = self._optimal_expanded_width
         else:

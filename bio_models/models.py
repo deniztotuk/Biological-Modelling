@@ -34,6 +34,11 @@ class BiologicalModel(ABC):
         pass
 
     @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Ecology Models"
+
+    @property
     @abstractmethod
     def category(self) -> str:
         """Category for sandwich menu organization."""
@@ -297,6 +302,7 @@ class ConsumerResourceModel(BiologicalModel):
         self,
         name: str = "Modular Consumer-Resource Model",
         category: str = "Consumer-Resource Models",
+        topic: str = "Ecology Models",
         f_type: str = "logistic",
         g_type: str = "type_1_linear",
         h_type: str = "linear_death",
@@ -304,6 +310,7 @@ class ConsumerResourceModel(BiologicalModel):
     ):
         self._name = name
         self._category = category
+        self._topic = topic
         self.f_type = f_type
         self.g_type = g_type
         self.h_type = h_type
@@ -312,6 +319,10 @@ class ConsumerResourceModel(BiologicalModel):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def topic(self) -> str:
+        return self._topic
 
     @property
     def category(self) -> str:

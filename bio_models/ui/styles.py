@@ -205,13 +205,42 @@ QLabel#DrawerTitle {
     border-bottom: 1px solid #e2e8f0;
 }
 
+QPushButton#DrawerTopic, QPushButton.DrawerTopicButton {
+    background-color: transparent;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    border-left: 3px solid transparent;
+}
+
+QPushButton#DrawerTopic:hover, QPushButton.DrawerTopicButton:hover {
+    background-color: #f1f5f9;
+    color: #0284c7;
+}
+
+QPushButton#DrawerTopic[expanded="true"],
+QPushButton.DrawerTopicButton[expanded="true"] {
+    background-color: #f8fafc;
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+    border-left: 3px solid #0284c7;
+}
+
+QWidget#DrawerTopicContainer {
+    background-color: transparent;
+}
+
 QLabel#DrawerCategory {
     color: #64748b;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    padding: 14px 16px 6px 16px;
+    padding: 14px 16px 6px 20px;
 }
 
 QPushButton#DrawerCloseBtn {
@@ -758,13 +787,42 @@ QLabel#DrawerTitle {
     border-bottom: 1px solid #262626;
 }
 
+QPushButton#DrawerTopic, QPushButton.DrawerTopicButton {
+    background-color: transparent;
+    color: #f4f4f5;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 1px solid #262626;
+    border-left: 3px solid transparent;
+}
+
+QPushButton#DrawerTopic:hover, QPushButton.DrawerTopicButton:hover {
+    background-color: #1f1f23;
+    color: #ffffff;
+}
+
+QPushButton#DrawerTopic[expanded="true"],
+QPushButton.DrawerTopicButton[expanded="true"] {
+    background-color: #18181b;
+    color: #ffffff;
+    border-bottom: 1px solid #262626;
+    border-left: 3px solid #71717a;
+}
+
+QWidget#DrawerTopicContainer {
+    background-color: transparent;
+}
+
 QLabel#DrawerCategory {
     color: #71717a;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    padding: 14px 16px 6px 16px;
+    padding: 14px 16px 6px 20px;
 }
 
 QPushButton#DrawerCloseBtn {

@@ -653,6 +653,7 @@ class TestGUIComponents(unittest.TestCase):
         window = MainWindow()
         window.resize(1340, 820)
         window.show()
+        window.drawer.expand_topic("Ecology Models")
         QApplication.processEvents()
 
         # 1. Default resolution (1340x820)
@@ -715,6 +716,44 @@ class TestGUIComponents(unittest.TestCase):
             first_model_names,
             ["Exponential Growth Model", "Logistic Growth Model"],
         )
+
+        window.close()
+
+    def test_drawer_topic_umbrella_expand_collapse(self):
+        """Verify Ecology Models topic umbrella collapses & expands."""
+        from PyQt6.QtWidgets import QPushButton
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        window.show()
+        drawer = window.drawer
+
+        # Verify topic header exists
+        topic_btns = [
+            btn for btn in drawer.findChildren(QPushButton)
+            if btn.objectName() == "DrawerTopic"
+        ]
+        self.assertEqual(len(topic_btns), 1)
+        eco_btn = topic_btns[0]
+        self.assertIn("Ecology Models", eco_btn.text())
+
+        # Initially, topic umbrella is collapsed
+        self.assertFalse(drawer.is_topic_expanded("Ecology Models"))
+        container = drawer._topic_containers["Ecology Models"]
+        self.assertFalse(container.isVisible())
+        self.assertIn("▸", eco_btn.text())
+
+        # Click on topic name to expand and make models appear
+        eco_btn.click()
+        self.assertTrue(drawer.is_topic_expanded("Ecology Models"))
+        self.assertTrue(container.isVisible())
+        self.assertIn("▾", eco_btn.text())
+
+        # Click topic name again to collapse
+        eco_btn.click()
+        self.assertFalse(drawer.is_topic_expanded("Ecology Models"))
+        self.assertFalse(container.isVisible())
+        self.assertIn("▸", eco_btn.text())
 
         window.close()
 
