@@ -89,12 +89,12 @@ class MainWindow(QMainWindow):
         run_action.triggered.connect(self.run_simulation)
         file_menu.addAction(run_action)
 
-        save_action = QAction("&Save Graph...", self)
+        save_action = QAction("&Save...", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
         save_action.setStatusTip(
-            "Export current graph as a high-resolution plot image")
+            "Save simulation data (CSV) or plot image (Ctrl+S)")
         save_action.triggered.connect(
-            lambda: self.canvas_widget.save_graph_as_jpeg())
+            lambda: self.canvas_widget.save())
         file_menu.addAction(save_action)
 
         file_menu.addSeparator()
@@ -171,7 +171,7 @@ class MainWindow(QMainWindow):
 
         top_layout.addStretch()
 
-        help_text = QLabel("[Enter] Run | [Ctrl+S] Save Graph")
+        help_text = QLabel("[Enter] Run | [Ctrl+S] Save")
         help_text.setObjectName("AppHelp")
         top_layout.addWidget(help_text)
 
@@ -242,10 +242,10 @@ class MainWindow(QMainWindow):
         menu_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         menu_shortcut.activated.connect(self._toggle_menu)
 
-        # Ctrl+S / Cmd+S exports JPEG
+        # Ctrl+S / Cmd+S saves simulation data or graph image.
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(
-            lambda: self.canvas_widget.save_graph_as_jpeg())
+            lambda: self.canvas_widget.save())
 
     def apply_theme(self, theme_name: str):
         """Apply theme ('light' or 'dark') across the entire application
@@ -333,8 +333,11 @@ class MainWindow(QMainWindow):
 
     def _on_export_completed(self, path: str):
         # Display export confirmation message in status bar.
-        self.status_bar.showMessage(
-            f"Graph successfully exported to JPEG: {path}", 6000)
+        if path.lower().endswith(".csv"):
+            msg = f"Simulation data successfully saved to CSV: {path}"
+        else:
+            msg = f"Graph successfully exported to image: {path}"
+        self.status_bar.showMessage(msg, 6000)
 
     def resizeEvent(self, event):
         """Handle window resize event to adjust drawer dimensions."""

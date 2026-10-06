@@ -17,7 +17,10 @@ sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
 
-from bio_models.engine import simulate_model  # noqa: E402
+from bio_models.engine import (  # noqa: E402
+    export_simulation_to_csv,
+    simulate_model,
+)
 from bio_models.models import (  # noqa: E402
     AVAILABLE_MODELS,
     ChemostatModel,
@@ -285,6 +288,62 @@ class TestBioModels(unittest.TestCase):
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+
+    def test_csv_export(self):
+        """Verify simulation time-series CSV data export."""
+        model = LogisticGrowthModel()
+        res = simulate_model(
+            model,
+            initial_state=(15.0,),
+            t_span=(0.0, 25.0),
+            num_points=50,
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            exported_path = export_simulation_to_csv(res, tmp_path)
+            self.assertEqual(exported_path, tmp_path)
+            self.assertTrue(os.path.exists(tmp_path))
+            self.assertGreater(os.path.getsize(tmp_path), 50)
+
+            with open(tmp_path, "r", encoding="utf-8") as f:
+                lines = [line.strip() for line in f.readlines()]
+
+            # Validate header comments and columns.
+            self.assertTrue(lines[0].startswith("# BioModel Studio"))
+            self.assertIn("Logistic Growth", lines[1])
+            self.assertIn("continuous", lines[2])
+            self.assertEqual(lines[5], "time,n")
+            # Total of 5 comment lines, 1 header, and 50 data rows.
+            self.assertEqual(len(lines), 56)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        # Test frequency model CSV export.
+        from bio_models.models import HaploidSelectionModel
+
+        freq_model = HaploidSelectionModel()
+        freq_res = simulate_model(
+            freq_model,
+            initial_state=(0.2, 0.8),
+            t_span=(0.0, 20.0),
+            num_points=30,
+        )
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+            freq_tmp = tmp.name
+
+        try:
+            export_simulation_to_csv(freq_res, freq_tmp)
+            with open(freq_tmp, "r", encoding="utf-8") as f:
+                freq_lines = [row.strip() for row in f.readlines()]
+            self.assertEqual(freq_lines[6], "time,p,q")
+            self.assertEqual(len(freq_lines), 37)
+        finally:
+            if os.path.exists(freq_tmp):
+                os.remove(freq_tmp)
 
     def test_exponential_growth_model_analytical_and_discrete(self):
         """Verify Exponential Growth matches analytical solution."""
@@ -1077,7 +1136,7 @@ class TestGUIComponents(unittest.TestCase):
         window.close()
 
     def test_modern_action_buttons(self):
-        """Verify Run Simulation and Save Graph buttons have modern styling."""
+        """Verify Run Simulation and Save buttons have modern styling."""
         from PyQt6.QtCore import Qt
         from bio_models.ui.main_window import MainWindow
 
@@ -1091,7 +1150,7 @@ class TestGUIComponents(unittest.TestCase):
         )
 
         export_btn = window.canvas_widget.export_btn
-        self.assertEqual(export_btn.text(), "Save Graph")
+        self.assertEqual(export_btn.text(), "Save")
         self.assertNotIn("JPEG", export_btn.text())
         self.assertFalse(export_btn.icon().isNull())
         self.assertEqual(
@@ -1107,6 +1166,71 @@ class TestGUIComponents(unittest.TestCase):
         window.apply_theme("dark")
         self.assertFalse(run_btn.icon().isNull())
         self.assertFalse(export_btn.icon().isNull())
+        window.close()
+
+    def test_gui_unified_save(self):
+        """Verify unified GUI Save method for CSV and image exports."""
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        window.run_simulation()
+        canvas = window.canvas_widget
+        self.assertIsNotNone(canvas._current_result)
+
+        # 1. Save to CSV directly via save(custom_path).
+        with tempfile.NamedTemporaryFile(
+            suffix=".csv", delete=False
+        ) as tmp:
+            csv_path = tmp.name
+        try:
+            exported = canvas.save(custom_path=csv_path)
+            self.assertEqual(exported, csv_path)
+            self.assertTrue(os.path.exists(csv_path))
+            self.assertGreater(os.path.getsize(csv_path), 50)
+        finally:
+            if os.path.exists(csv_path):
+                os.remove(csv_path)
+
+        # 2. Save to PNG via save(custom_path).
+        with tempfile.NamedTemporaryFile(
+            suffix=".png", delete=False
+        ) as tmp:
+            png_path = tmp.name
+        try:
+            exported = canvas.save(custom_path=png_path)
+            self.assertEqual(exported, png_path)
+            self.assertTrue(os.path.exists(png_path))
+            self.assertGreater(os.path.getsize(png_path), 500)
+        finally:
+            if os.path.exists(png_path):
+                os.remove(png_path)
+
+        # 3. Save without extension using format_filter dispatch.
+        base_tmp = os.path.join(
+            tempfile.gettempdir(), "test_export_dispatch"
+        )
+        try:
+            csv_disp = canvas.save(
+                custom_path=base_tmp, format_filter="CSV Data (*.csv)"
+            )
+            self.assertTrue(csv_disp.endswith(".csv"))
+            self.assertTrue(os.path.exists(csv_disp))
+            if os.path.exists(csv_disp):
+                os.remove(csv_disp)
+
+            png_disp = canvas.save(
+                custom_path=base_tmp, format_filter="PNG Image (*.png)"
+            )
+            self.assertTrue(png_disp.endswith(".png"))
+            self.assertTrue(os.path.exists(png_disp))
+            if os.path.exists(png_disp):
+                os.remove(png_disp)
+        finally:
+            for ext in (".csv", ".png", ".jpeg"):
+                p = base_tmp + ext
+                if os.path.exists(p):
+                    os.remove(p)
+
         window.close()
 
     def test_model_info_button(self):

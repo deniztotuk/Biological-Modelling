@@ -4,8 +4,11 @@ Uses SciPy adaptive ODE solvers (RK45, LSODA) and discrete recurrence
 steps.
 """
 
+import csv
+import os
 import time
 from typing import Dict, Optional
+
 import numpy as np
 from scipy.integrate import solve_ivp
 
@@ -132,6 +135,9 @@ def simulate_model(
                 "steps": num_recur_steps,
                 "elapsed_ms": elapsed_ms,
                 "is_single_variable": model.is_single_variable,
+                "is_frequency_model": getattr(
+                    model, "is_frequency_model", False
+                ),
             },
             success=True,
             message=(
@@ -194,6 +200,9 @@ def simulate_model(
                     "elapsed_ms": elapsed_ms,
                     "solver": ode_method,
                     "is_single_variable": model.is_single_variable,
+                    "is_frequency_model": getattr(
+                        model, "is_frequency_model", False
+                    ),
                 },
                 success=False,
                 message=f"Solver error: {sol.message}",
@@ -224,6 +233,9 @@ def simulate_model(
                 "nfev": sol.nfev,
                 "elapsed_ms": elapsed_ms,
                 "is_single_variable": model.is_single_variable,
+                "is_frequency_model": getattr(
+                    model, "is_frequency_model", False
+                ),
             },
             success=True,
             message=(
@@ -241,7 +253,85 @@ def simulate_model(
             n1_label=model.n1_label,
             n2_label=model.n2_label,
             parameters=params,
-            metadata={"elapsed_ms": elapsed_ms, "error": str(e)},
+            metadata={
+                "elapsed_ms": elapsed_ms,
+                "error": str(e),
+                "is_frequency_model": getattr(
+                    model, "is_frequency_model", False
+                ),
+            },
             success=False,
             message=f"Exception during simulation: {e}",
         )
+
+
+def _format_csv_number(val: float) -> str:
+    # Format numerical values cleanly with high scientific precision.
+    if np.isnan(val) or np.isinf(val):
+        return str(val)
+    if abs(val) >= 1e-4 and abs(val) < 1e7 and val == int(val):
+        return str(int(val))
+    return f"{val:.8g}"
+
+
+def export_simulation_to_csv(
+    result: SimulationResult, target_path: str
+) -> str:
+    """Export simulation time-series data to a standard CSV file.
+
+    Writes commented metadata headers (#) followed by tabular data
+    columns for time and state variables.
+    """
+    abs_path = os.path.abspath(target_path)
+    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+
+    is_freq = result.metadata.get(
+        "is_frequency_model", False
+    ) or ("(p)" in result.n1_label and "(q)" in result.n2_label)
+    is_single = result.metadata.get("is_single_variable", False)
+
+    mode = result.metadata.get("mode", "continuous")
+    param_str = ", ".join(
+        f"{k}={v}" for k, v in result.parameters.items()
+    )
+
+    with open(abs_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        f.write("# BioModel Studio - Simulation Data Export\n")
+        f.write(f"# Model: {result.model_name}\n")
+        f.write(f"# Mode: {mode}\n")
+        f.write(f"# Parameters: {param_str}\n")
+        if is_freq:
+            f.write(f"# Column p: {result.n1_label}\n")
+            f.write(f"# Column q: {result.n2_label}\n")
+            writer.writerow(["time", "p", "q"])
+            for t_val, p_val, q_val in zip(
+                result.t, result.n1, result.n2
+            ):
+                writer.writerow([
+                    _format_csv_number(float(t_val)),
+                    _format_csv_number(float(p_val)),
+                    _format_csv_number(float(q_val)),
+                ])
+        elif is_single:
+            f.write(f"# Column n: {result.n1_label}\n")
+            writer.writerow(["time", "n"])
+            for t_val, n_val in zip(result.t, result.n1):
+                writer.writerow([
+                    _format_csv_number(float(t_val)),
+                    _format_csv_number(float(n_val)),
+                ])
+        else:
+            f.write(f"# Column n1: {result.n1_label}\n")
+            f.write(f"# Column n2: {result.n2_label}\n")
+            writer.writerow(["time", "n1", "n2"])
+            for t_val, n1_val, n2_val in zip(
+                result.t, result.n1, result.n2
+            ):
+                writer.writerow([
+                    _format_csv_number(float(t_val)),
+                    _format_csv_number(float(n1_val)),
+                    _format_csv_number(float(n2_val)),
+                ])
+
+    return abs_path

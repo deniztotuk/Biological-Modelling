@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from bio_models.engine import export_simulation_to_csv
 from bio_models.models import BiologicalModel, SimulationResult
 from bio_models.ui.styles import get_plot_colors, get_save_icon
 
@@ -45,8 +46,10 @@ def _format_density(val: float) -> str:
 
 
 class BioPlotCanvas(QWidget):
-    """Dual-view visualization widget for time-series and phase space,
-    supporting Light and Dark themes with JPEG export.
+    """Dual-view visualization widget for simulation dynamics.
+
+    Provides time-series and phase portrait visualizations, dynamic
+    theme switching, and unified export to CSV data and plot images.
     """
 
     export_completed = pyqtSignal(str)
@@ -81,15 +84,15 @@ class BioPlotCanvas(QWidget):
         ch_layout.addWidget(self.info_lbl)
         ch_layout.addStretch()
 
-        self.export_btn = QPushButton("Save Graph")
+        self.export_btn = QPushButton("Save")
         self.export_btn.setObjectName("SaveGraphButton")
         self.export_btn.setIcon(get_save_icon(self.theme))
         self.export_btn.setIconSize(QSize(13, 13))
         self.export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.export_btn.setToolTip(
-            "Save high-resolution 300 DPI plot image (Ctrl+S)"
+            "Save simulation data (CSV) or plot image (Ctrl+S)"
         )
-        self.export_btn.clicked.connect(lambda: self.save_graph_as_jpeg())
+        self.export_btn.clicked.connect(lambda: self.save())
         ch_layout.addWidget(self.export_btn)
 
         layout.addWidget(canvas_header)
@@ -1077,11 +1080,33 @@ class BioPlotCanvas(QWidget):
         for text in leg_phase.get_texts():
             text.set_color(colors["text_color"])
 
+    def export_csv(
+        self, custom_path: Optional[str] = None
+    ) -> Optional[str]:
+        """Export current simulation numerical data to a CSV file.
+
+        If custom_path is not provided, opens a native Save File Dialog.
+        """
+        return self.save(custom_path=custom_path, format_filter="CSV")
+
     def save_graph_as_jpeg(
         self, custom_path: Optional[str] = None
     ) -> Optional[str]:
         """Export the current figure as a 300 DPI JPEG image.
-        If custom_path is not provided, open a native Save File Dialog.
+
+        If custom_path is not provided, opens a native Save File Dialog.
+        """
+        return self.save(custom_path=custom_path, format_filter="JPEG")
+
+    def save(
+        self,
+        custom_path: Optional[str] = None,
+        format_filter: Optional[str] = None,
+    ) -> Optional[str]:
+        """Save simulation as CSV data or image via native file dialog.
+
+        Allows format selection (CSV, JPEG, PNG) through the file dialog
+        format dropdown filter.
         """
         if self._current_result is None:
             QMessageBox.warning(
@@ -1091,38 +1116,86 @@ class BioPlotCanvas(QWidget):
             )
             return None
 
+        is_interactive = custom_path is None
         if custom_path:
             target_path = custom_path
+            chosen_filter = format_filter or ""
         else:
             base_model_name = (
                 self._current_result.model_name.replace(" ", "_").lower()
             )
-            default_name = f"{base_model_name}_simulation.jpeg"
-            target_path, _ = QFileDialog.getSaveFileName(
+            # Default to CSV or requested filter format.
+            if format_filter and "JPEG" in format_filter:
+                default_name = f"{base_model_name}_simulation.jpeg"
+            elif format_filter and "PNG" in format_filter:
+                default_name = f"{base_model_name}_simulation.png"
+            else:
+                default_name = f"{base_model_name}_simulation.csv"
+
+            filter_str = (
+                "CSV Data (*.csv);;"
+                "JPEG Image (*.jpeg *.jpg);;"
+                "PNG Image (*.png);;"
+                "All Files (*)"
+            )
+            target_path, chosen_filter = QFileDialog.getSaveFileName(
                 self,
-                "Save Simulation Graph",
+                "Save Simulation Data or Graph",
                 default_name,
-                "JPEG Image (*.jpeg *.jpg);;PNG Image (*.png);;All Files (*)",
+                filter_str,
             )
 
         if not target_path:
             return None
 
-        # Ensure correct extension
-        ext = target_path.lower()
-        if not (
-            ext.endswith(".jpeg")
-            or ext.endswith(".jpg")
-            or ext.endswith(".png")
-        ):
-            target_path += ".jpeg"
+        # Determine format from file extension or selected filter.
+        ext = os.path.splitext(target_path)[1].lower()
+        if ext == ".csv":
+            export_type = "csv"
+        elif ext in (".jpeg", ".jpg"):
+            export_type = "jpeg"
+        elif ext == ".png":
+            export_type = "png"
+        else:
+            if "PNG" in chosen_filter:
+                export_type = "png"
+                target_path += ".png"
+            elif "JPEG" in chosen_filter:
+                export_type = "jpeg"
+                target_path += ".jpeg"
+            else:
+                export_type = "csv"
+                target_path += ".csv"
 
         os.makedirs(
             os.path.dirname(os.path.abspath(target_path)), exist_ok=True
         )
 
+        if export_type == "csv":
+            try:
+                export_simulation_to_csv(
+                    self._current_result, target_path
+                )
+                self.export_completed.emit(target_path)
+                if is_interactive:
+                    QMessageBox.information(
+                        self,
+                        "Data Exported",
+                        f"Successfully saved simulation data to:\n"
+                        f"{target_path}",
+                    )
+                return target_path
+            except Exception as e:
+                if is_interactive:
+                    QMessageBox.critical(
+                        self,
+                        "Export Error",
+                        f"Failed to export CSV data:\n{e}",
+                    )
+                return None
+
         colors = get_plot_colors(self.theme)
-        is_png = target_path.lower().endswith(".png")
+        is_png = export_type == "png"
         try:
             self.figure.savefig(
                 target_path,
@@ -1133,15 +1206,17 @@ class BioPlotCanvas(QWidget):
                 edgecolor="none",
             )
             self.export_completed.emit(target_path)
-            if not custom_path:
+            if is_interactive:
+                fmt_name = "PNG" if is_png else "JPEG"
                 QMessageBox.information(
                     self,
                     "Graph Exported",
-                    f"Successfully saved graph to:\n{target_path}",
+                    f"Successfully saved {fmt_name} image to:\n"
+                    f"{target_path}",
                 )
             return target_path
         except Exception as e:
-            if not custom_path:
+            if is_interactive:
                 QMessageBox.critical(
                     self,
                     "Export Error",
