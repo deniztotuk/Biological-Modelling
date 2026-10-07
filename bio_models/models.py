@@ -1051,7 +1051,7 @@ class HaploidSelectionModel(BiologicalModel):
     def rhs(
         self, t: float, state: np.ndarray, params: Dict[str, float]
     ) -> np.ndarray:
-        """Continuous differential equation: dp/dt = s_c * p * (1 - p)."""
+        """Compute continuous haploid selection derivatives."""
         p = float(np.clip(state[0], 0.0, 1.0))
         w_a = params.get("W_A", 1.20)
         w_b = max(1e-9, params.get("W_a", 1.00))
@@ -1213,6 +1213,290 @@ class DiploidSelectionModel(BiologicalModel):
         return np.array([p_next, 1.0 - p_next], dtype=float)
 
 
+# ---------------------------------------------------------------------
+# 10. Mutation-Selection Balance Model
+# ---------------------------------------------------------------------
+class MutationSelectionModel(BiologicalModel):
+    """Model of mutation-selection balance (Otto & Day 2007, Sec. 3.4).
+
+    Tracks allele frequencies p (allele A) and q = 1 - p (allele a)
+    under natural selection with recurrent forward mutation (A -> a at
+    rate mu) and reverse back-mutation (a -> A at rate nu).
+
+    Continuous differential equation:
+        dp/dt = s_c * p * (1 - p) - mu * p + nu * (1 - p)
+        dq/dt = -dp/dt, where s_c = (W_A - W_a) / W_a
+
+    Discrete recursion equation:
+        p* = W_A * p / [W_A * p + W_a * (1 - p)]
+        p(t+1) = p* * (1 - mu) + (1 - p*) * nu
+        q(t+1) = 1 - p(t+1)
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Evolution Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Natural Selection Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the mutation-selection model."""
+        return "Mutation-Selection Model"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (p and q)."""
+        return 2
+
+    @property
+    def is_frequency_model(self) -> bool:
+        """Return True for frequency-based population genetic model."""
+        return True
+
+    @property
+    def n1_label(self) -> str:
+        """Label for allele A frequency (p)."""
+        return "Allele A Frequency (p)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for allele a frequency (q)."""
+        return "Allele a Frequency (q)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default parameter set for mutation-selection."""
+        return {
+            "W_A": 1.20,
+            "W_a": 1.00,
+            "mu": 0.01,
+            "nu": 0.005,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
+        return {
+            "W_A": {
+                "label": "Fitness Allele A (W_A):",
+                "min": 0.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Absolute or relative reproductive fitness of allele A"
+                ),
+            },
+            "W_a": {
+                "label": "Fitness Allele a (W_a):",
+                "min": 0.01,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Absolute or relative reproductive fitness of allele a"
+                ),
+            },
+            "mu": {
+                "label": "Mutation Rate A→a (μ):",
+                "min": 0.0,
+                "max": 0.20,
+                "step": 0.005,
+                "description": (
+                    "Forward mutation probability from allele A to a"
+                ),
+            },
+            "nu": {
+                "label": "Mutation Rate a→A (ν):",
+                "min": 0.0,
+                "max": 0.20,
+                "step": 0.005,
+                "description": (
+                    "Reverse back-mutation probability from allele a to A"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Compute continuous mutation-selection derivatives."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        w_a = params.get("W_A", 1.20)
+        w_b = max(1e-9, params.get("W_a", 1.00))
+        mu = max(0.0, params.get("mu", 0.01))
+        nu = max(0.0, params.get("nu", 0.005))
+
+        s_c = (w_a - w_b) / w_b
+        dp_dt = s_c * p * (1.0 - p) - mu * p + nu * (1.0 - p)
+        return np.array([dp_dt, -dp_dt], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: selection followed by mutation step."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        w_a = max(0.0, params.get("W_A", 1.20))
+        w_b = max(0.0, params.get("W_a", 1.00))
+        mu = max(0.0, min(1.0, params.get("mu", 0.01)))
+        nu = max(0.0, min(1.0, params.get("nu", 0.005)))
+
+        denom = w_a * p + w_b * (1.0 - p)
+        if denom <= 1e-12:
+            p_sel = p
+        else:
+            p_sel = (w_a * p) / denom
+
+        p_next = p_sel * (1.0 - mu) + (1.0 - p_sel) * nu
+        p_next = float(np.clip(p_next, 0.0, 1.0))
+        return np.array([p_next, 1.0 - p_next], dtype=float)
+
+
+# ---------------------------------------------------------------------
+# 11. Migration-Selection Balance Model
+# ---------------------------------------------------------------------
+class MigrationSelectionModel(BiologicalModel):
+    """Continent-island migration-selection model (Otto & Day 2007).
+
+    Tracks allele frequencies p (allele A) and q = 1 - p (allele a)
+    under local natural selection on an island with continent gene flow
+    at migration rate m and mainland allele A frequency p_m.
+
+    Continuous differential equation:
+        dp/dt = s_c * p * (1 - p) + m * (p_m - p)
+        dq/dt = -dp/dt, where s_c = (W_A - W_a) / W_a
+
+    Discrete recursion equation:
+        p* = W_A * p / [W_A * p + W_a * (1 - p)]
+        p(t+1) = (1 - m) * p* + m * p_m
+        q(t+1) = 1 - p(t+1)
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Evolution Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Natural Selection Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the migration-selection model."""
+        return "Migration-Selection Model"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (p and q)."""
+        return 2
+
+    @property
+    def is_frequency_model(self) -> bool:
+        """Return True for frequency-based population genetic model."""
+        return True
+
+    @property
+    def n1_label(self) -> str:
+        """Label for allele A frequency (p)."""
+        return "Allele A Frequency (p)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for allele a frequency (q)."""
+        return "Allele a Frequency (q)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default parameter set for migration-selection."""
+        return {
+            "W_A": 1.25,
+            "W_a": 1.00,
+            "m": 0.05,
+            "p_m": 0.10,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI generation: label, min, max, step, desc."""
+        return {
+            "W_A": {
+                "label": "Island Fitness Allele A (W_A):",
+                "min": 0.0,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Reproductive fitness of allele A on the island"
+                ),
+            },
+            "W_a": {
+                "label": "Island Fitness Allele a (W_a):",
+                "min": 0.01,
+                "max": 5.0,
+                "step": 0.05,
+                "description": (
+                    "Reproductive fitness of allele a on the island"
+                ),
+            },
+            "m": {
+                "label": "Migration Rate (m):",
+                "min": 0.0,
+                "max": 1.0,
+                "step": 0.01,
+                "description": (
+                    "Fraction of island population replaced by immigrants"
+                ),
+            },
+            "p_m": {
+                "label": "Mainland Allele A Freq (p_m):",
+                "min": 0.0,
+                "max": 1.0,
+                "step": 0.05,
+                "description": (
+                    "Allele A frequency in mainland/immigrant pool"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Compute continuous migration-selection derivatives."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        w_a = params.get("W_A", 1.25)
+        w_b = max(1e-9, params.get("W_a", 1.00))
+        m = max(0.0, min(1.0, params.get("m", 0.05)))
+        p_m = float(np.clip(params.get("p_m", 0.10), 0.0, 1.0))
+
+        s_c = (w_a - w_b) / w_b
+        dp_dt = s_c * p * (1.0 - p) + m * (p_m - p)
+        return np.array([dp_dt, -dp_dt], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: selection followed by gene flow."""
+        p = float(np.clip(state[0], 0.0, 1.0))
+        w_a = max(0.0, params.get("W_A", 1.25))
+        w_b = max(0.0, params.get("W_a", 1.00))
+        m = max(0.0, min(1.0, params.get("m", 0.05)))
+        p_m = float(np.clip(params.get("p_m", 0.10), 0.0, 1.0))
+
+        denom = w_a * p + w_b * (1.0 - p)
+        if denom <= 1e-12:
+            p_sel = p
+        else:
+            p_sel = (w_a * p) / denom
+
+        p_next = (1.0 - m) * p_sel + m * p_m
+        p_next = float(np.clip(p_next, 0.0, 1.0))
+        return np.array([p_next, 1.0 - p_next], dtype=float)
+
+
 # Registry of available models for the sandwich menu
 AVAILABLE_MODELS: List[BiologicalModel] = [
     LotkaVolterraCompetitionModel(),
@@ -1231,4 +1515,6 @@ AVAILABLE_MODELS: List[BiologicalModel] = [
     ),
     HaploidSelectionModel(),
     DiploidSelectionModel(),
+    MutationSelectionModel(),
+    MigrationSelectionModel(),
 ]

@@ -293,6 +293,88 @@ MODEL_DETAILS: Dict[str, Dict[str, Any]] = {
             "but fix slowly."
         ),
     },
+    "Mutation-Selection Model": {
+        "title": (
+            "Mutation-Selection Balance & Dynamics "
+            "(Otto & Day 2007, Sec. 3.4)"
+        ),
+        "diff_eq_type": (
+            "Continuous Selection & Two-Way Mutation ODE"
+        ),
+        "diff_eq": [
+            "dp/dt = s_c·p·(1-p) - μ·p + ν·(1-p)",
+            "dq/dt = -dp/dt,  where s_c = (W_A - W_a) / W_a",
+        ],
+        "disc_eq_type": (
+            "Discrete Selection & Recurrent Mutation Recurrence"
+        ),
+        "disc_eq": [
+            "p* = W_A·p / [W_A·p + W_a·(1-p)]",
+            "p(t+1) = p*·(1-μ) + (1-p*)·ν",
+            "q(t+1) = 1 - p(t+1)",
+        ],
+        "scenarios": (
+            "Models allele frequency dynamics under natural selection with "
+            "recurrent forward mutation (A → a at rate μ) and reverse "
+            "back-mutation (a → A at rate ν). Key biological scenarios "
+            "include:<br>"
+            "• <b>Null Hypothesis: Neutral Drift</b>: Equal fitness "
+            "(W_A = W_a) and zero mutation (μ = ν = 0) keep allele "
+            "frequencies constant over time.<br>"
+            "• <b>Mutation-Selection Balance</b>: Purifying selection "
+            "against deleterious allele a is counteracted by recurrent "
+            "mutation from A, maintaining a mutation load with equilibrium "
+            "frequency q̂ ≈ μ/s.<br>"
+            "• <b>Mutational Equilibrium</b>: In the absence of selection "
+            "differentials (W_A = W_a), opposing mutations equilibrate at "
+            "p̂ = ν / (μ + ν).<br>"
+            "• <b>Adaptive Sweep</b>: Recurrent mutation continuously "
+            "introduces an advantageous allele, accelerating its adaptive "
+            "sweep toward fixation."
+        ),
+    },
+    "Migration-Selection Model": {
+        "title": (
+            "Continent-Island Migration & Selection "
+            "(Otto & Day 2007, Sec. 3.4)"
+        ),
+        "diff_eq_type": (
+            "Continuous Selection & Continent Gene Flow ODE"
+        ),
+        "diff_eq": [
+            "dp/dt = s_c·p·(1-p) + m·(p_m - p)",
+            "dq/dt = -dp/dt,  where s_c = (W_A - W_a) / W_a",
+        ],
+        "disc_eq_type": (
+            "Discrete Selection & Island Gene Flow Recurrence"
+        ),
+        "disc_eq": [
+            "p* = W_A·p / [W_A·p + W_a·(1-p)]",
+            "p(t+1) = (1-m)·p* + m·p_m",
+            "q(t+1) = 1 - p(t+1)",
+        ],
+        "scenarios": (
+            "Models allele frequency changes on an island subject to local "
+            "natural selection and continuous gene flow from a large mainland "
+            "source at migration rate m and mainland allele frequency p_m. "
+            "Key biological scenarios include:<br>"
+            "• <b>Null Hypothesis: Neutral Drift</b>: Equal fitness "
+            "(W_A = W_a) and complete reproductive isolation (m = 0) keep "
+            "island allele frequencies strictly constant.<br>"
+            "• <b>Migration-Selection Balance</b>: Divergent selection "
+            "favoring a locally adapted allele is balanced by maladapted "
+            "migrants, maintaining a stable polymorphism.<br>"
+            "• <b>Gene Swamping</b>: High gene flow overpowers weak local "
+            "selection (m &gt; s), swamping local adaptation and driving "
+            "the resident allele extinct.<br>"
+            "• <b>Island Rescue</b>: High immigration of an advantageous "
+            "mainland allele prevents the extinction of a locally depleted "
+            "allele.<br>"
+            "• <b>Neutral Gene Flow</b>: Without selection, migrant mixing "
+            "smoothly shifts island allele frequency toward mainland source "
+            "frequency p_m."
+        ),
+    },
 }
 
 

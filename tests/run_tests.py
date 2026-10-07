@@ -610,6 +610,150 @@ class TestBioModels(unittest.TestCase):
         self.assertAlmostEqual(res_disc.n1[1], expected_p1, places=4)
         self.assertAlmostEqual(res_disc.n2[1], 1.0 - expected_p1, places=4)
 
+    def test_mutation_selection_model(self):
+        """Verify Mutation-Selection dynamics and neutral drift."""
+        from bio_models.models import MutationSelectionModel
+        from bio_models.presets import PRESETS
+
+        model = MutationSelectionModel()
+        self.assertEqual(model.topic, "Evolution Models")
+        self.assertEqual(model.category, "Natural Selection Models")
+        self.assertTrue(model.is_frequency_model)
+
+        # 1. Null hypothesis stasis with equal fitness and zero mutation.
+        res_null = simulate_model(
+            model=model,
+            initial_state=(0.35, 0.65),
+            t_span=(0.0, 20.0),
+            params={"W_A": 1.0, "W_a": 1.0, "mu": 0.0, "nu": 0.0},
+            mode="continuous",
+        )
+        self.assertTrue(res_null.success)
+        self.assertAlmostEqual(res_null.n1[0], 0.35, places=4)
+        self.assertAlmostEqual(res_null.n1[-1], 0.35, places=4)
+        self.assertTrue(np.allclose(res_null.n1 + res_null.n2, 1.0))
+
+        # 2. Mutational equilibrium without selection: p̂ = ν / (μ + ν).
+        mu, nu = 0.03, 0.01
+        expected_p_eq = nu / (mu + nu)
+        res_mut = simulate_model(
+            model=model,
+            initial_state=(0.80, 0.20),
+            t_span=(0.0, 150.0),
+            num_points=300,
+            params={"W_A": 1.0, "W_a": 1.0, "mu": mu, "nu": nu},
+            mode="continuous",
+        )
+        self.assertTrue(res_mut.success)
+        self.assertAlmostEqual(res_mut.n1[-1], expected_p_eq, places=2)
+
+        # 3. Discrete recursion matching analytical formula.
+        # Formula: p* = W_A * p0 / (W_A * p0 + W_a * (1 - p0)).
+        # Then: p1 = p* * (1 - mu) + (1 - p*) * nu.
+        p0 = 0.40
+        w_a, w_b, mu_d, nu_d = 1.20, 1.00, 0.02, 0.005
+        p_sel = (w_a * p0) / (w_a * p0 + w_b * (1.0 - p0))
+        expected_p1 = p_sel * (1.0 - mu_d) + (1.0 - p_sel) * nu_d
+
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(p0, 1.0 - p0),
+            t_span=(0.0, 5.0),
+            params={"W_A": w_a, "W_a": w_b, "mu": mu_d, "nu": nu_d},
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.n1[1], expected_p1, places=4)
+        self.assertAlmostEqual(res_disc.n2[1], 1.0 - expected_p1, places=4)
+
+        # 4. Verify all presets for this model run successfully.
+        presets = PRESETS[model.name]
+        has_null_preset = any("Neutral Drift" in p["name"] for p in presets)
+        self.assertTrue(has_null_preset)
+        for preset in presets:
+            res_p = simulate_model(
+                model=model,
+                initial_state=preset["initial"],
+                t_span=preset["t_span"],
+                params=preset["params"],
+                mode="continuous",
+            )
+            self.assertTrue(res_p.success)
+
+    def test_migration_selection_model(self):
+        """Verify Migration-Selection dynamics and neutral drift."""
+        from bio_models.models import MigrationSelectionModel
+        from bio_models.presets import PRESETS
+
+        model = MigrationSelectionModel()
+        self.assertEqual(model.topic, "Evolution Models")
+        self.assertEqual(model.category, "Natural Selection Models")
+        self.assertTrue(model.is_frequency_model)
+
+        # 1. Null hypothesis stasis with equal fitness and zero gene flow.
+        res_null = simulate_model(
+            model=model,
+            initial_state=(0.42, 0.58),
+            t_span=(0.0, 20.0),
+            params={"W_A": 1.0, "W_a": 1.0, "m": 0.0, "p_m": 0.5},
+            mode="continuous",
+        )
+        self.assertTrue(res_null.success)
+        self.assertAlmostEqual(res_null.n1[0], 0.42, places=4)
+        self.assertAlmostEqual(res_null.n1[-1], 0.42, places=4)
+        self.assertTrue(np.allclose(res_null.n1 + res_null.n2, 1.0))
+
+        # 2. Neutral gene flow: island frequency equilibrates to p_m.
+        p_m = 0.70
+        res_flow = simulate_model(
+            model=model,
+            initial_state=(0.10, 0.90),
+            t_span=(0.0, 60.0),
+            num_points=200,
+            params={"W_A": 1.0, "W_a": 1.0, "m": 0.15, "p_m": p_m},
+            mode="continuous",
+        )
+        self.assertTrue(res_flow.success)
+        self.assertAlmostEqual(res_flow.n1[-1], p_m, places=2)
+
+        # 3. Discrete recursion matching analytical formula.
+        # Formula: p* = W_A * p0 / (W_A * p0 + W_a * (1 - p0)).
+        # Then: p1 = (1 - m) * p* + m * p_m.
+        p0 = 0.30
+        w_a, w_b, m_rate, p_mainland = 1.30, 1.00, 0.08, 0.10
+        p_sel = (w_a * p0) / (w_a * p0 + w_b * (1.0 - p0))
+        expected_p1 = (1.0 - m_rate) * p_sel + m_rate * p_mainland
+
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(p0, 1.0 - p0),
+            t_span=(0.0, 5.0),
+            params={
+                "W_A": w_a,
+                "W_a": w_b,
+                "m": m_rate,
+                "p_m": p_mainland,
+            },
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.n1[1], expected_p1, places=4)
+        self.assertAlmostEqual(res_disc.n2[1], 1.0 - expected_p1, places=4)
+
+        # 4. Verify all presets for this model run successfully.
+        presets = PRESETS[model.name]
+        has_null_preset = any("Neutral Drift" in p["name"] for p in presets)
+        self.assertTrue(has_null_preset)
+        for preset in presets:
+            res_p = simulate_model(
+                model=model,
+                initial_state=preset["initial"],
+                t_span=preset["t_span"],
+                params=preset["params"],
+                mode="continuous",
+            )
+            self.assertTrue(res_p.success)
+
 
 class TestGUIComponents(unittest.TestCase):
     """Test GUI components and user interaction workflows."""

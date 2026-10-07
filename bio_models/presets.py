@@ -388,7 +388,7 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
         {
-            "name": "Neutral Drift / Equal Fitness",
+            "name": "Null Hypothesis: Neutral Drift (Equal Fitness)",
             "description": (
                 "Both alleles have identical fitness (W_A = W_a = 1.0), "
                 "maintaining constant frequencies across generations."
@@ -415,6 +415,24 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
         },
     ],
     "Diploid Selection Model": [
+        {
+            "name": (
+                "Null Hypothesis: Neutral Drift "
+                "(Equal Fitness / Hardy-Weinberg)"
+            ),
+            "description": (
+                "Evolutionary null hypothesis: all genotypes have equal "
+                "fitness (W_AA = W_Aa = W_aa = 1.0), maintaining allele "
+                "frequencies constant across generations."
+            ),
+            "initial": (50, 50),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_AA": 1.00,
+                "W_Aa": 1.00,
+                "W_aa": 1.00,
+            },
+        },
         {
             "name": "Directional Selection (Advantageous A)",
             "description": (
@@ -487,6 +505,163 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
                 "W_AA": 1.25,
                 "W_Aa": 1.25,
                 "W_aa": 1.00,
+            },
+        },
+    ],
+    "Mutation-Selection Model": [
+        {
+            "name": (
+                "Null Hypothesis: Neutral Drift (Equal Fitness, Zero Mutation)"
+            ),
+            "description": (
+                "Evolutionary null hypothesis: equal fitnesses "
+                "(W_A = W_a = 1.0) and zero mutation (μ = ν = 0) keep "
+                "allele frequencies constant across generations."
+            ),
+            "initial": (50, 50),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_A": 1.00,
+                "W_a": 1.00,
+                "mu": 0.00,
+                "nu": 0.00,
+            },
+        },
+        {
+            "name": (
+                "Mutation-Selection Balance (Purifying Selection vs Mutation)"
+            ),
+            "description": (
+                "Favorable allele A (W_A = 1.0) suffers recurrent deleterious "
+                "mutation (μ = 0.02) to inferior allele a (W_a = 0.85), "
+                "stabilizing at balance q̂ ≈ μ/s."
+            ),
+            "initial": (95, 5),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "W_A": 1.00,
+                "W_a": 0.85,
+                "mu": 0.02,
+                "nu": 0.001,
+            },
+        },
+        {
+            "name": "Mutational Equilibrium (Two-Way Neutral Mutation)",
+            "description": (
+                "Equal reproductive fitness (W_A = W_a = 1.0) with forward "
+                "(μ = 0.03) and reverse (ν = 0.01) mutations converges to "
+                "equilibrium p̂ = ν/(μ + ν) = 0.25."
+            ),
+            "initial": (80, 20),
+            "t_span": (0.0, 80.0),
+            "params": {
+                "W_A": 1.00,
+                "W_a": 1.00,
+                "mu": 0.03,
+                "nu": 0.01,
+            },
+        },
+        {
+            "name": "Adaptive Mutation Sweep (Novel Beneficial Allele)",
+            "description": (
+                "Rare beneficial allele A (W_A = 1.30 vs W_a = 1.0) is "
+                "continuously seeded by mutation (ν = 0.01), accelerating "
+                "its sweep toward near-fixation."
+            ),
+            "initial": (1, 99),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_A": 1.30,
+                "W_a": 1.00,
+                "mu": 0.005,
+                "nu": 0.01,
+            },
+        },
+    ],
+    "Migration-Selection Model": [
+        {
+            "name": (
+                "Null Hypothesis: Neutral Drift "
+                "(Isolated Island, Zero Migration)"
+            ),
+            "description": (
+                "Evolutionary null hypothesis: equal fitnesses "
+                "(W_A = W_a = 1.0) and zero gene flow (m = 0) keep island "
+                "allele frequencies in perpetual stasis."
+            ),
+            "initial": (50, 50),
+            "t_span": (0.0, 40.0),
+            "params": {
+                "W_A": 1.00,
+                "W_a": 1.00,
+                "m": 0.00,
+                "p_m": 0.50,
+            },
+        },
+        {
+            "name": (
+                "Migration-Selection Balance (Local Adaptation vs Gene Flow)"
+            ),
+            "description": (
+                "Allele A is locally favored on island (W_A = 1.25 vs "
+                "W_a = 1.0), but maladapted migrants from mainland "
+                "(p_m = 0.05, m = 0.06) sustain polymorphism."
+            ),
+            "initial": (70, 30),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "W_A": 1.25,
+                "W_a": 1.00,
+                "m": 0.06,
+                "p_m": 0.05,
+            },
+        },
+        {
+            "name": "Gene Swamping (Migration Overcomes Local Selection)",
+            "description": (
+                "High migration rate (m = 0.25) from mainland fixed for a "
+                "(p_m = 0.0) overwhelms weak local adaptation (s = 0.10), "
+                "driving allele A to extinction."
+            ),
+            "initial": (80, 20),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "W_A": 1.10,
+                "W_a": 1.00,
+                "m": 0.25,
+                "p_m": 0.00,
+            },
+        },
+        {
+            "name": "Island Rescue (Immigrant Influx Sustains Allele A)",
+            "description": (
+                "Allele A is locally disfavored on island (W_A = 0.85 vs "
+                "W_a = 1.0), but massive immigration from mainland where A "
+                "is common (p_m = 0.90, m = 0.12) rescues it."
+            ),
+            "initial": (10, 90),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "W_A": 0.85,
+                "W_a": 1.00,
+                "m": 0.12,
+                "p_m": 0.90,
+            },
+        },
+        {
+            "name": "Neutral Gene Flow (Swamping to Mainland Frequency)",
+            "description": (
+                "No selection differentials (W_A = W_a = 1.0); pure gene "
+                "flow (m = 0.10) smoothly drives the island frequency toward "
+                "mainland source frequency p_m = 0.75."
+            ),
+            "initial": (15, 85),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "W_A": 1.00,
+                "W_a": 1.00,
+                "m": 0.10,
+                "p_m": 0.75,
             },
         },
     ],
