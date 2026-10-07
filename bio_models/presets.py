@@ -665,4 +665,182 @@ PRESETS: Dict[str, List[Dict[str, Any]]] = {
             },
         },
     ],
+    "Classic SIR Model (Kermack & McKendrick)": [
+        {
+            "name": "Epidemic Wave (R₀ = 2.0, Major Outbreak)",
+            "description": (
+                "Classic epidemic outbreak with R₀ ≈ 1.98. The infectious "
+                "wave climbs to a prominent peak before herd immunity "
+                "exhausts transmission, leaving uninfected survivors."
+            ),
+            "initial": (990, 10, 0),
+            "t_span": (0.0, 70.0),
+            "params": {
+                "beta": 0.0002,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Sub-Threshold Outbreak (R₀ = 0.8, Self-Limiting)",
+            "description": (
+                "Sub-critical pathogen transmission (R₀ < 1.0). Each "
+                "infected individual fails to replace themselves, leading to "
+                "monotonic disease decay without an epidemic wave."
+            ),
+            "initial": (990, 10, 0),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "beta": 0.00008,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "High Contagion / Rapid Wave (R₀ = 3.5)",
+            "description": (
+                "Highly contagious disease (R₀ ≈ 3.47). Produces an "
+                "intense, early infection spike and rapidly consumes "
+                "the susceptible pool down to low final endemic escape."
+            ),
+            "initial": (990, 10, 0),
+            "t_span": (0.0, 45.0),
+            "params": {
+                "beta": 0.00035,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Herd Immunity Buffer (Pre-Immune Population)",
+            "description": (
+                "A population with 54% pre-existing immunity (R₀ = 1000). "
+                "The effective reproduction number R_eff drops below 1.0, "
+                "protecting the remaining susceptibles from an outbreak."
+            ),
+            "initial": (450, 10, 540),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "beta": 0.0002,
+                "gamma": 0.10,
+            },
+        },
+    ],
+    "SIS Model (Endemic Diseases)": [
+        {
+            "name": "Endemic Persistence (R₀ = 2.0, Stable Equilibrium)",
+            "description": (
+                "Infection without permanent immunity (R₀ = 2.0). Recurrent "
+                "re-susceptibility prevents disease clearance, stabilizing at "
+                "endemic equilibrium I* = N(1 - 1/R₀) = 500 individuals."
+            ),
+            "initial": (950, 50),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "beta": 0.0002,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Disease Eradication (R₀ = 0.75, Below Threshold)",
+            "description": (
+                "Sub-threshold transmission (R₀ = 0.75). Recovery outpaces "
+                "transmission, eradicating the pathogen and restoring the "
+                "disease-free equilibrium (I → 0, S → N)."
+            ),
+            "initial": (850, 150),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "beta": 0.000075,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "High Endemic Prevalence (R₀ = 4.0)",
+            "description": (
+                "Severe reinfection pressure (R₀ = 4.0). Overcomes rapid "
+                "recovery, locking 75% of the total population into the "
+                "infectious state at endemic steady state."
+            ),
+            "initial": (980, 20),
+            "t_span": (0.0, 50.0),
+            "params": {
+                "beta": 0.0004,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Critical Bifurcation Boundary (R₀ ≈ 1.05)",
+            "description": (
+                "Near-transcritical bifurcation threshold (R₀ = 1.05). "
+                "Transmission barely exceeds recovery, sustaining a tenuous "
+                "low-level endemic equilibrium (I* ≈ 48)."
+            ),
+            "initial": (950, 50),
+            "t_span": (0.0, 100.0),
+            "params": {
+                "beta": 0.000105,
+                "gamma": 0.10,
+            },
+        },
+    ],
+    "SEIR Model with Incubation Period": [
+        {
+            "name": "Influenza-Like Epidemic (Short Latency, R₀ = 2.2)",
+            "description": (
+                "Acute viral infection with rapid incubation (1/σ = 2 days). "
+                "The exposed compartment peak precedes the infectious peak, "
+                "broadening the epidemic wave."
+            ),
+            "initial": (990, 5, 5, 0),
+            "t_span": (0.0, 70.0),
+            "params": {
+                "beta": 0.00022,
+                "sigma": 0.50,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Prolonged Latency / Wave Flattening (Long Latency)",
+            "description": (
+                "Extended incubation period (1/σ = 10 days, σ = 0.10). "
+                "Substantially flattens and delays the infectious peak "
+                "without changing the basic reproduction number R₀."
+            ),
+            "initial": (990, 5, 5, 0),
+            "t_span": (0.0, 100.0),
+            "params": {
+                "beta": 0.00022,
+                "sigma": 0.10,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Sub-Threshold Latent Outbreak (R₀ = 0.85)",
+            "description": (
+                "Sub-critical latent pathogen (R₀ = 0.83). Exposed carriers "
+                "transition to infectiousness but fail to replace themselves, "
+                "resulting in spontaneous disease clearance."
+            ),
+            "initial": (980, 10, 10, 0),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "beta": 0.000085,
+                "sigma": 0.25,
+                "gamma": 0.10,
+            },
+        },
+        {
+            "name": "Transmission Slashing / Lockdown Intervention",
+            "description": (
+                "Simulates contact rate reduction mid-outbreak, dropping "
+                "R_eff below 1.0. Drains the latent exposed reservoir and "
+                "quenches the transmission chain."
+            ),
+            "initial": (800, 80, 60, 60),
+            "t_span": (0.0, 60.0),
+            "params": {
+                "beta": 0.00007,
+                "sigma": 0.20,
+                "gamma": 0.10,
+            },
+        },
+    ],
 }

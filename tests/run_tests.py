@@ -1,4 +1,7 @@
-"""Standalone test runner using standard library unittest and assertions."""
+"""Standalone test runner using unittest and assertions.
+
+Executes unit and GUI tests across all biological models and components.
+"""
 
 import os
 import sys
@@ -620,7 +623,7 @@ class TestBioModels(unittest.TestCase):
         self.assertEqual(model.category, "Natural Selection Models")
         self.assertTrue(model.is_frequency_model)
 
-        # 1. Null hypothesis stasis with equal fitness and zero mutation.
+        # 1. Null hypothesis: equal fitness and zero mutation.
         res_null = simulate_model(
             model=model,
             initial_state=(0.35, 0.65),
@@ -690,7 +693,7 @@ class TestBioModels(unittest.TestCase):
         self.assertEqual(model.category, "Natural Selection Models")
         self.assertTrue(model.is_frequency_model)
 
-        # 1. Null hypothesis stasis with equal fitness and zero gene flow.
+        # 1. Null hypothesis: equal fitness and zero gene flow.
         res_null = simulate_model(
             model=model,
             initial_state=(0.42, 0.58),
@@ -745,6 +748,252 @@ class TestBioModels(unittest.TestCase):
         has_null_preset = any("Neutral Drift" in p["name"] for p in presets)
         self.assertTrue(has_null_preset)
         for preset in presets:
+            res_p = simulate_model(
+                model=model,
+                initial_state=preset["initial"],
+                t_span=preset["t_span"],
+                params=preset["params"],
+                mode="continuous",
+            )
+            self.assertTrue(res_p.success)
+
+    def test_classic_sir_model(self):
+        """Verify Classic SIR epidemiological dynamics and conservation."""
+        from bio_models.models import ClassicSIRModel
+        from bio_models.presets import PRESETS
+
+        model = ClassicSIRModel()
+        self.assertEqual(model.topic, "Epidemiology Models")
+        self.assertEqual(model.category, "Compartmental Epidemic Models")
+        self.assertEqual(model.num_variables, 3)
+        self.assertTrue(model.is_epidemic_model)
+
+        # 1. Outbreak with R0 > 1 (wave peak and herd immunity).
+        # S0=990, I0=10, R0=0, beta=0.0005, gamma=0.2 => R0 = 2.475.
+        res = simulate_model(
+            model=model,
+            initial_state=(990.0, 10.0, 0.0),
+            t_span=(0.0, 70.0),
+            num_points=200,
+            params={"beta": 0.0005, "gamma": 0.2},
+            mode="continuous",
+        )
+        self.assertTrue(res.success)
+        self.assertIsNotNone(res.n3)
+        self.assertEqual(len(res.n1), 200)
+        self.assertEqual(len(res.n2), 200)
+        self.assertEqual(len(res.n3), 200)
+
+        # Total population N = S + I + R is conserved.
+        total_pop = res.n1 + res.n2 + res.n3
+        self.assertTrue(np.allclose(total_pop, 1000.0, atol=1e-2))
+
+        # Susceptibles strictly decrease, Recovered strictly increase.
+        self.assertLess(res.n1[-1], res.n1[0])
+        self.assertGreater(res.n3[-1], res.n3[0])
+
+        # Infection peak occurs near Sc = gamma / beta = 400.
+        peak_idx = int(np.argmax(res.n2))
+        self.assertGreater(res.n2[peak_idx], 10.0)
+        self.assertAlmostEqual(res.n1[peak_idx], 400.0, delta=25.0)
+
+        # 2. Sub-threshold scenario (R0 < 1 => monotonic decline in I).
+        res_sub = simulate_model(
+            model=model,
+            initial_state=(990.0, 10.0, 0.0),
+            t_span=(0.0, 40.0),
+            num_points=100,
+            params={"beta": 0.00015, "gamma": 0.25},
+            mode="continuous",
+        )
+        self.assertTrue(res_sub.success)
+        self.assertTrue(np.all(np.diff(res_sub.n2) <= 1e-4))
+
+        # 3. Discrete recursion verification.
+        s0, i0, r0 = 950.0, 50.0, 0.0
+        beta, gamma = 0.0004, 0.15
+        new_inf = beta * s0 * i0
+        new_rec = gamma * i0
+        exp_s1 = s0 - new_inf
+        exp_i1 = i0 + new_inf - new_rec
+        exp_r1 = r0 + new_rec
+
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(s0, i0, r0),
+            t_span=(0.0, 5.0),
+            params={"beta": beta, "gamma": gamma},
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.n1[1], exp_s1, places=3)
+        self.assertAlmostEqual(res_disc.n2[1], exp_i1, places=3)
+        self.assertAlmostEqual(res_disc.n3[1], exp_r1, places=3)
+
+        # 4. CSV export verification.
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+            tmp_sir = tmp.name
+        try:
+            export_simulation_to_csv(res, tmp_sir)
+            with open(tmp_sir, "r", encoding="utf-8") as f:
+                csv_lines = [line.strip() for line in f.readlines()]
+            self.assertTrue(any("time,S,I,R" in line for line in csv_lines))
+        finally:
+            if os.path.exists(tmp_sir):
+                os.remove(tmp_sir)
+
+        # 5. Verify all presets run successfully.
+        for preset in PRESETS[model.name]:
+            res_p = simulate_model(
+                model=model,
+                initial_state=preset["initial"],
+                t_span=preset["t_span"],
+                params=preset["params"],
+                mode="continuous",
+            )
+            self.assertTrue(res_p.success)
+
+    def test_sis_endemic_model(self):
+        """Verify SIS dynamics: endemic equilibrium and eradication."""
+        from bio_models.models import SISEndemicModel
+        from bio_models.presets import PRESETS
+
+        model = SISEndemicModel()
+        self.assertEqual(model.topic, "Epidemiology Models")
+        self.assertEqual(model.category, "Compartmental Epidemic Models")
+        self.assertEqual(model.num_variables, 2)
+        self.assertTrue(model.is_epidemic_model)
+
+        # 1. Endemic persistence: R0 = beta * N / gamma = 2.0.
+        # Endemic equilibrium I* = N * (1 - 1/R0) = 500.
+        res_endemic = simulate_model(
+            model=model,
+            initial_state=(950.0, 50.0),
+            t_span=(0.0, 80.0),
+            num_points=250,
+            params={"beta": 0.0004, "gamma": 0.2},
+            mode="continuous",
+        )
+        self.assertTrue(res_endemic.success)
+        total_sis = res_endemic.n1 + res_endemic.n2
+        self.assertTrue(np.allclose(total_sis, 1000.0, atol=1e-2))
+        self.assertAlmostEqual(res_endemic.n2[-1], 500.0, delta=10.0)
+        self.assertAlmostEqual(res_endemic.n1[-1], 500.0, delta=10.0)
+
+        # 2. Disease eradication: R0 = 0.00015 * 1000 / 0.20 = 0.75 < 1.
+        res_erad = simulate_model(
+            model=model,
+            initial_state=(950.0, 50.0),
+            t_span=(0.0, 100.0),
+            num_points=200,
+            params={"beta": 0.00015, "gamma": 0.20},
+            mode="continuous",
+        )
+        self.assertTrue(res_erad.success)
+        self.assertAlmostEqual(res_erad.n2[-1], 0.0, delta=2.0)
+        self.assertAlmostEqual(res_erad.n1[-1], 1000.0, delta=2.0)
+
+        # 3. Discrete recursion verification.
+        s0, i0 = 900.0, 100.0
+        beta, gamma = 0.0003, 0.18
+        new_inf = beta * s0 * i0
+        new_rec = gamma * i0
+        exp_s1 = s0 - new_inf + new_rec
+        exp_i1 = i0 + new_inf - new_rec
+
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(s0, i0),
+            t_span=(0.0, 5.0),
+            params={"beta": beta, "gamma": gamma},
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.n1[1], exp_s1, places=3)
+        self.assertAlmostEqual(res_disc.n2[1], exp_i1, places=3)
+
+        # 4. Verify all presets run successfully.
+        for preset in PRESETS[model.name]:
+            res_p = simulate_model(
+                model=model,
+                initial_state=preset["initial"],
+                t_span=preset["t_span"],
+                params=preset["params"],
+                mode="continuous",
+            )
+            self.assertTrue(res_p.success)
+
+    def test_seir_incubation_model(self):
+        """Verify SEIR dynamics with incubation compartment and latency."""
+        from bio_models.models import SEIRIncubationModel
+        from bio_models.presets import PRESETS
+
+        model = SEIRIncubationModel()
+        self.assertEqual(model.topic, "Epidemiology Models")
+        self.assertEqual(model.category, "Compartmental Epidemic Models")
+        self.assertEqual(model.num_variables, 4)
+        self.assertTrue(model.is_epidemic_model)
+
+        # 1. Continuous simulation with 4 compartments.
+        res = simulate_model(
+            model=model,
+            initial_state=(980.0, 15.0, 5.0, 0.0),
+            t_span=(0.0, 100.0),
+            num_points=250,
+            params={"beta": 0.0005, "sigma": 0.2, "gamma": 0.15},
+            mode="continuous",
+        )
+        self.assertTrue(res.success)
+        self.assertIsNotNone(res.n3)
+        self.assertIsNotNone(res.n4)
+
+        # Total population N = S + E + I + R is conserved.
+        tot = res.n1 + res.n2 + res.n3 + res.n4
+        self.assertTrue(np.allclose(tot, 1000.0, atol=1e-2))
+
+        # Latent exposed peak precedes infectious peak.
+        peak_e_idx = int(np.argmax(res.n2))
+        peak_i_idx = int(np.argmax(res.n3))
+        self.assertLessEqual(res.t[peak_e_idx], res.t[peak_i_idx])
+
+        # 2. Discrete recursion verification.
+        s0, e0, i0, r0 = 960.0, 25.0, 15.0, 0.0
+        beta, sigma, gamma = 0.0004, 0.25, 0.18
+        new_inf = beta * s0 * i0
+        new_onset = sigma * e0
+        new_rec = gamma * i0
+        exp_s1 = s0 - new_inf
+        exp_e1 = e0 + new_inf - new_onset
+        exp_i1 = i0 + new_onset - new_rec
+        exp_r1 = r0 + new_rec
+
+        res_disc = simulate_model(
+            model=model,
+            initial_state=(s0, e0, i0, r0),
+            t_span=(0.0, 5.0),
+            params={"beta": beta, "sigma": sigma, "gamma": gamma},
+            mode="discrete",
+        )
+        self.assertTrue(res_disc.success)
+        self.assertAlmostEqual(res_disc.n1[1], exp_s1, places=3)
+        self.assertAlmostEqual(res_disc.n2[1], exp_e1, places=3)
+        self.assertAlmostEqual(res_disc.n3[1], exp_i1, places=3)
+        self.assertAlmostEqual(res_disc.n4[1], exp_r1, places=3)
+
+        # 3. CSV export verification with 4 compartments.
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+            tmp_seir = tmp.name
+        try:
+            export_simulation_to_csv(res, tmp_seir)
+            with open(tmp_seir, "r", encoding="utf-8") as f:
+                csv_lines = [line.strip() for line in f.readlines()]
+            self.assertTrue(any("time,S,E,I,R" in line for line in csv_lines))
+        finally:
+            if os.path.exists(tmp_seir):
+                os.remove(tmp_seir)
+
+        # 4. Verify all presets run successfully.
+        for preset in PRESETS[model.name]:
             res_p = simulate_model(
                 model=model,
                 initial_state=preset["initial"],
@@ -1041,16 +1290,18 @@ class TestGUIComponents(unittest.TestCase):
         window.show()
         drawer = window.drawer
 
-        # Verify both topic headers exist
+        # Verify all three topic headers exist
         topic_btns = [
             btn for btn in drawer.findChildren(QPushButton)
             if btn.objectName() == "DrawerTopic"
         ]
-        self.assertEqual(len(topic_btns), 2)
+        self.assertEqual(len(topic_btns), 3)
         eco_btn = topic_btns[0]
         self.assertIn("Ecology Models", eco_btn.text())
         evo_btn = topic_btns[1]
         self.assertIn("Evolution Models", evo_btn.text())
+        epi_btn = topic_btns[2]
+        self.assertIn("Epidemiology Models", epi_btn.text())
 
         # Initially, topic umbrellas are collapsed
         self.assertFalse(drawer.is_topic_expanded("Ecology Models"))
@@ -1086,6 +1337,23 @@ class TestGUIComponents(unittest.TestCase):
         self.assertFalse(drawer.is_topic_expanded("Evolution Models"))
         self.assertFalse(evo_container.isVisible())
         self.assertIn("▸", evo_btn.text())
+
+        # Click on Epidemiology Models to expand
+        self.assertFalse(drawer.is_topic_expanded("Epidemiology Models"))
+        epi_container = drawer._topic_containers["Epidemiology Models"]
+        self.assertFalse(epi_container.isVisible())
+        self.assertIn("▸", epi_btn.text())
+
+        epi_btn.click()
+        self.assertTrue(drawer.is_topic_expanded("Epidemiology Models"))
+        self.assertTrue(epi_container.isVisible())
+        self.assertIn("▾", epi_btn.text())
+
+        # Click Epidemiology Models again to collapse
+        epi_btn.click()
+        self.assertFalse(drawer.is_topic_expanded("Epidemiology Models"))
+        self.assertFalse(epi_container.isVisible())
+        self.assertIn("▸", epi_btn.text())
 
         window.close()
 
@@ -1194,17 +1462,19 @@ class TestGUIComponents(unittest.TestCase):
 
         for model in AVAILABLE_MODELS:
             # 1. Test model.discrete_step directly
-            init_state = np.array([20.0, 15.0])
+            n_vars = getattr(model, "num_variables", 2)
+            init_state = np.array([20.0] * n_vars)
             params = model.default_params
             next_state = model.discrete_step(init_state, params)
             self.assertIsInstance(next_state, np.ndarray)
-            self.assertEqual(len(next_state), 2)
+            self.assertEqual(len(next_state), n_vars)
             self.assertTrue(np.all(next_state >= 0))
 
             # 2. Test simulation in discrete mode
+            init_tuple = tuple([20.0] * n_vars)
             res = simulate_model(
                 model=model,
-                initial_state=(20.0, 15.0),
+                initial_state=init_tuple,
                 t_span=(0.0, 25.0),
                 num_points=50,
                 params=params,
@@ -1214,7 +1484,13 @@ class TestGUIComponents(unittest.TestCase):
             self.assertEqual(res.metadata.get("mode"), "discrete")
             self.assertEqual(len(res.t), 50)
             self.assertTrue(np.all(res.n1 >= 0))
-            self.assertTrue(np.all(res.n2 >= 0))
+            if not model.is_single_variable:
+                self.assertTrue(np.all(res.n2 >= 0))
+            if getattr(model, "is_epidemic_model", False):
+                if res.n3 is not None:
+                    self.assertTrue(np.all(res.n3 >= 0))
+                if res.n4 is not None:
+                    self.assertTrue(np.all(res.n4 >= 0))
 
             # 3. Test GUI toggle interaction for this model
             window._on_model_selected(model, "continuous")
@@ -1518,6 +1794,51 @@ class TestGUIComponents(unittest.TestCase):
         self.assertEqual(panel.t_start_spin.decimals(), 2)
         self.assertEqual(panel.t_end_spin.decimals(), 2)
         self.assertEqual(panel.t_end_spin.singleStep(), 5.0)
+
+        window.close()
+
+    def test_epidemic_models_gui(self):
+        """Verify GUI parameter panel and canvas for epidemic models."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.models import ClassicSIRModel, SEIRIncubationModel
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+
+        # Switch to Classic SIR Model
+        sir_model = ClassicSIRModel()
+        window._on_model_selected(sir_model, "continuous")
+        QApplication.processEvents()
+
+        # Check spinboxes for S0, I0, R0
+        self.assertIsNotNone(window.param_panel.n3_init_spin)
+        self.assertEqual(window.param_panel.n3_init_spin.minimum(), 0)
+        self.assertEqual(window.param_panel.n2_init_spin.minimum(), 0)
+
+        # Run simulation
+        window.run_simulation()
+        res = window.canvas_widget._current_result
+        self.assertIsNotNone(res)
+        self.assertTrue(res.success)
+        self.assertIsNotNone(res.n3)
+
+        # Verify status info label has R0 and Herd Immunity (HIT).
+        info_text = window.canvas_widget.info_lbl.text()
+        self.assertIn("R₀", info_text)
+        self.assertIn("HIT:", info_text)
+
+        # Switch to SEIR Model with Incubation Period
+        seir_model = SEIRIncubationModel()
+        window._on_model_selected(seir_model, "continuous")
+        QApplication.processEvents()
+
+        # Check spinboxes for S0, E0, I0, R0
+        self.assertIsNotNone(window.param_panel.n4_init_spin)
+        window.run_simulation()
+        res_seir = window.canvas_widget._current_result
+        self.assertIsNotNone(res_seir)
+        self.assertTrue(res_seir.success)
+        self.assertIsNotNone(res_seir.n4)
 
         window.close()
 

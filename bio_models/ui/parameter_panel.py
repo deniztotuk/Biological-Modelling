@@ -335,7 +335,7 @@ class ParameterPanel(QWidget):
         # Initial n1 (Positive integers only: 1, 2, 3...)
         sim_layout.addWidget(QLabel(f"Initial {self.model.n1_label}:"), 0, 0)
         self.n1_init_spin = QSpinBox()
-        self.n1_init_spin.setRange(1, 1000000)
+        self.n1_init_spin.setRange(1, 10000000)
         if self.model.name == "Exponential Growth Model":
             default_n1 = 8
             default_tend = 5.0
@@ -345,16 +345,20 @@ class ParameterPanel(QWidget):
         elif getattr(self.model, "is_frequency_model", False):
             default_n1 = 20
             default_tend = 40.0
+        elif getattr(self.model, "is_epidemic_model", False):
+            default_n1 = 950 if "SIS" in self.model.name else 990
+            default_tend = 70.0
         else:
             default_n1 = 25
             default_tend = 50.0
         self.n1_init_spin.setValue(default_n1)
         self.n1_init_spin.setSingleStep(1)
-        tip1 = (
-            "Initial count of allele A carriers (p₀ = nA / (nA + na))"
-            if getattr(self.model, "is_frequency_model", False)
-            else "Initial population count (must be a positive integer ≥ 1)"
-        )
+        if getattr(self.model, "is_frequency_model", False):
+            tip1 = "Initial count of allele A carriers (p₀ = nA / (nA + na))"
+        elif getattr(self.model, "is_epidemic_model", False):
+            tip1 = "Initial susceptible population count (S₀)"
+        else:
+            tip1 = "Initial population count (must be a positive integer ≥ 1)"
         self.n1_init_spin.setToolTip(tip1)
         sim_layout.addWidget(self.n1_init_spin, 0, 1)
 
@@ -365,27 +369,67 @@ class ParameterPanel(QWidget):
                 QLabel(f"Initial {self.model.n2_label}:"), row_idx, 0
             )
             self.n2_init_spin = QSpinBox()
-            self.n2_init_spin.setRange(1, 1000000)
-            default_n2 = (
-                80
-                if getattr(self.model, "is_frequency_model", False)
-                else 15
+            min_n2 = (
+                0 if getattr(self.model, "is_epidemic_model", False) else 1
             )
-            self.n2_init_spin.setValue(default_n2)
-            self.n2_init_spin.setSingleStep(1)
-            tip2 = (
-                "Initial count of allele a carriers (q₀ = na / (nA + na))"
-                if getattr(self.model, "is_frequency_model", False)
-                else (
+            self.n2_init_spin.setRange(min_n2, 10000000)
+            if getattr(self.model, "is_frequency_model", False):
+                default_n2 = 80
+                tip2 = (
+                    "Initial count of allele a carriers "
+                    "(q₀ = na / (nA + na))"
+                )
+            elif getattr(self.model, "is_epidemic_model", False):
+                default_n2 = 5 if "SEIR" in self.model.name else (
+                    50 if "SIS" in self.model.name else 10
+                )
+                tip2 = f"Initial count of {self.model.n2_label}"
+            else:
+                default_n2 = 15
+                tip2 = (
                     "Initial population count (must be a positive "
                     "integer ≥ 1)"
                 )
-            )
+            self.n2_init_spin.setValue(default_n2)
+            self.n2_init_spin.setSingleStep(1)
             self.n2_init_spin.setToolTip(tip2)
             sim_layout.addWidget(self.n2_init_spin, row_idx, 1)
             row_idx += 1
         else:
             self.n2_init_spin = None
+
+        if self.model.num_variables >= 3 and self.model.n3_label:
+            sim_layout.addWidget(
+                QLabel(f"Initial {self.model.n3_label}:"), row_idx, 0
+            )
+            self.n3_init_spin = QSpinBox()
+            self.n3_init_spin.setRange(0, 10000000)
+            default_n3 = 5 if "SEIR" in self.model.name else 0
+            self.n3_init_spin.setValue(default_n3)
+            self.n3_init_spin.setSingleStep(1)
+            self.n3_init_spin.setToolTip(
+                f"Initial count of {self.model.n3_label}"
+            )
+            sim_layout.addWidget(self.n3_init_spin, row_idx, 1)
+            row_idx += 1
+        else:
+            self.n3_init_spin = None
+
+        if self.model.num_variables >= 4 and self.model.n4_label:
+            sim_layout.addWidget(
+                QLabel(f"Initial {self.model.n4_label}:"), row_idx, 0
+            )
+            self.n4_init_spin = QSpinBox()
+            self.n4_init_spin.setRange(0, 10000000)
+            self.n4_init_spin.setValue(0)
+            self.n4_init_spin.setSingleStep(1)
+            self.n4_init_spin.setToolTip(
+                f"Initial count of {self.model.n4_label}"
+            )
+            sim_layout.addWidget(self.n4_init_spin, row_idx, 1)
+            row_idx += 1
+        else:
+            self.n4_init_spin = None
 
         # Initial Time (t_start / t0)
         start_label = (
@@ -524,6 +568,16 @@ class ParameterPanel(QWidget):
             self.n1_init_spin.setValue(int(round(init_vals[0])))
             if len(init_vals) > 1 and self.n2_init_spin is not None:
                 self.n2_init_spin.setValue(int(round(init_vals[1])))
+            if (
+                len(init_vals) > 2
+                and getattr(self, "n3_init_spin", None) is not None
+            ):
+                self.n3_init_spin.setValue(int(round(init_vals[2])))
+            if (
+                len(init_vals) > 3
+                and getattr(self, "n4_init_spin", None) is not None
+            ):
+                self.n4_init_spin.setValue(int(round(init_vals[3])))
 
         if "t_span" in data:
             t_span = data["t_span"]
@@ -615,11 +669,6 @@ class ParameterPanel(QWidget):
     def get_simulation_inputs(self) -> Dict[str, Any]:
         """Extract all current user inputs from the UI."""
         params = {k: spin.value() for k, spin in self._param_inputs.items()}
-        n2_val = (
-            int(self.n2_init_spin.value())
-            if self.n2_init_spin is not None
-            else 0
-        )
         if self.mode == "discrete":
             steps = max(
                 1,
@@ -637,13 +686,20 @@ class ParameterPanel(QWidget):
                 else 500
             )
 
+        init_list = [int(self.n1_init_spin.value())]
+        if self.n2_init_spin is not None:
+            init_list.append(int(self.n2_init_spin.value()))
+        else:
+            init_list.append(0)
+        if getattr(self, "n3_init_spin", None) is not None:
+            init_list.append(int(self.n3_init_spin.value()))
+        if getattr(self, "n4_init_spin", None) is not None:
+            init_list.append(int(self.n4_init_spin.value()))
+
         return {
             "model": self.model,
             "mode": self.mode,
-            "initial_state": (
-                int(self.n1_init_spin.value()),
-                n2_val,
-            ),
+            "initial_state": tuple(init_list),
             "t_span": (self.t_start_spin.value(), self.t_end_spin.value()),
             "num_points": num_points,
             "params": params,

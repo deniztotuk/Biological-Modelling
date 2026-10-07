@@ -233,7 +233,9 @@ class BioPlotCanvas(QWidget):
             self.canvas.draw()
             return
 
-        if getattr(model, "is_frequency_model", False):
+        if getattr(model, "is_epidemic_model", False):
+            self._update_plot_epidemic_model(result, model, colors)
+        elif getattr(model, "is_frequency_model", False):
             self._update_plot_frequency_model(result, model, colors)
         elif model.is_single_variable:
             self._update_plot_single_variable(result, model, colors)
@@ -247,7 +249,9 @@ class BioPlotCanvas(QWidget):
             )
             self.canvas.draw()
 
-        if getattr(model, "is_frequency_model", False):
+        if getattr(model, "is_epidemic_model", False):
+            self._update_epidemic_info_label(result, model)
+        elif getattr(model, "is_frequency_model", False):
             p_end = result.n1[-1]
             q_end = result.n2[-1]
             dp = p_end - result.n1[0]
@@ -270,6 +274,465 @@ class BioPlotCanvas(QWidget):
             self.info_lbl.setText(
                 f"{result.message} | Final: n₁={n1_str}, n₂={n2_str}"
             )
+
+    def _update_epidemic_info_label(
+        self, result: SimulationResult, model: BiologicalModel
+    ) -> None:
+        # Format informative status summary for epidemic dynamics.
+        beta = result.parameters.get("beta", 0.0002)
+        gamma = result.parameters.get("gamma", 0.10)
+        s0 = result.n1[0]
+        s_end = result.n1[-1]
+
+        if "SIS" in model.name:
+            n_tot = result.n1[0] + result.n2[0]
+            r0 = (beta * n_tot) / gamma if gamma > 0 else 0.0
+            if r0 > 1.0:
+                i_star = n_tot * (1.0 - 1.0 / r0)
+                s_star = n_tot / r0
+                msg = (
+                    f"{result.message} | R₀ = {r0:.2f} | "
+                    f"Endemic Equilibrium: I* = {int(round(i_star))}, "
+                    f"S* = {int(round(s_star))} | "
+                    f"Final: I = {int(round(result.n2[-1]))}"
+                )
+            else:
+                msg = (
+                    f"{result.message} | R₀ = {r0:.2f} (R₀ ≤ 1: Pathogen "
+                    f"Eradicated, S* = {int(round(n_tot))})"
+                )
+        elif "SEIR" in model.name:
+            r0 = (beta * s0) / gamma if gamma > 0 else 0.0
+            sigma = result.parameters.get("sigma", 0.20)
+            latency_days = (1.0 / sigma) if sigma > 0 else 0.0
+            e_max = float(np.max(result.n2))
+            i_max = (
+                float(np.max(result.n3))
+                if result.n3 is not None
+                else 0.0
+            )
+            t_i = (
+                result.t[int(np.argmax(result.n3))]
+                if result.n3 is not None
+                else 0.0
+            )
+            if r0 > 1.0:
+                hit = (1.0 - 1.0 / r0) * 100.0
+                msg = (
+                    f"{result.message} | R₀ = {r0:.2f} (HIT: {hit:.1f}%) | "
+                    f"Latency 1/σ = {latency_days:.1f}d | "
+                    f"Peak: I = {int(round(i_max))} (t = {t_i:.1f}), "
+                    f"E = {int(round(e_max))} | "
+                    f"Uninfected: {int(round(s_end))}"
+                )
+            else:
+                msg = (
+                    f"{result.message} | R₀ = {r0:.2f} (Sub-Threshold: "
+                    f"Clearance) | Uninfected: {int(round(s_end))}"
+                )
+        else:
+            # Classic SIR model.
+            r0 = (beta * s0) / gamma if gamma > 0 else 0.0
+            i_max = float(np.max(result.n2))
+            t_peak = result.t[int(np.argmax(result.n2))]
+            if r0 > 1.0:
+                hit = (1.0 - 1.0 / r0) * 100.0
+                s_c = gamma / beta if beta > 0 else 0.0
+                msg = (
+                    f"{result.message} | R₀ = {r0:.2f} (HIT: {hit:.1f}%, "
+                    f"S_c = {int(round(s_c))}) | "
+                    f"Peak: I = {int(round(i_max))} (t = {t_peak:.1f}) | "
+                    f"Uninfected: {int(round(s_end))}"
+                )
+            else:
+                msg = (
+                    f"{result.message} | R₀ = {r0:.2f} (Sub-Threshold: "
+                    f"No Outbreak Wave) | "
+                    f"Uninfected: {int(round(s_end))}"
+                )
+        self.info_lbl.setText(msg)
+
+    def _update_plot_epidemic_model(
+        self,
+        result: SimulationResult,
+        model: BiologicalModel,
+        colors: dict,
+    ) -> None:
+        # Render epidemic time series curves and phase portrait.
+        t = result.t
+        s_arr = result.n1
+        is_disc = result.metadata.get("mode") == "discrete"
+        params = result.parameters
+        beta = params.get("beta", 0.0002)
+        gamma = params.get("gamma", 0.10)
+
+        is_dark = self.theme.lower() == "dark"
+        c_s = "#38bdf8" if is_dark else "#0284c7"
+        c_e = "#fbbf24" if is_dark else "#d97706"
+        c_i = "#f87171" if is_dark else "#dc2626"
+        c_r = "#34d399" if is_dark else "#059669"
+        c_thresh = "#94a3b8" if is_dark else "#64748b"
+
+        # -------------------------------------------------------------
+        # 1. Left Subplot: Epidemic Waves Over Time
+        # -------------------------------------------------------------
+        if "SEIR" in model.name:
+            e_arr = result.n2
+            i_arr = (
+                result.n3 if result.n3 is not None else np.zeros_like(t)
+            )
+            r_arr = (
+                result.n4 if result.n4 is not None else np.zeros_like(t)
+            )
+
+            if is_disc:
+                self.ax_time.step(
+                    t, s_arr, where="post", color=c_s, linewidth=2.0,
+                    label=result.n1_label,
+                )
+                self.ax_time.step(
+                    t, e_arr, where="post", color=c_e, linewidth=2.0,
+                    label=result.n2_label,
+                )
+                self.ax_time.step(
+                    t, i_arr, where="post", color=c_i, linewidth=2.2,
+                    label=result.n3_label or "Infectious (I)",
+                )
+                self.ax_time.step(
+                    t, r_arr, where="post", color=c_r, linewidth=2.0,
+                    label=result.n4_label or "Recovered (R)",
+                )
+                self.ax_time.fill_between(
+                    t, i_arr, step="post", color=c_i, alpha=0.15
+                )
+                self.ax_time.plot(
+                    t, i_arr, "o", color=c_i, markersize=3.0, alpha=0.85
+                )
+                self.ax_time.xaxis.set_major_locator(
+                    MaxNLocator(integer=True)
+                )
+            else:
+                self.ax_time.plot(
+                    t, s_arr, color=c_s, linewidth=2.0,
+                    label=result.n1_label,
+                )
+                self.ax_time.plot(
+                    t, e_arr, color=c_e, linewidth=2.0,
+                    label=result.n2_label,
+                )
+                self.ax_time.plot(
+                    t, i_arr, color=c_i, linewidth=2.2,
+                    label=result.n3_label or "Infectious (I)",
+                )
+                self.ax_time.plot(
+                    t, r_arr, color=c_r, linewidth=2.0,
+                    label=result.n4_label or "Recovered (R)",
+                )
+                self.ax_time.fill_between(
+                    t, i_arr, color=c_i, alpha=0.15
+                )
+                self.ax_time.fill_between(
+                    t, e_arr, color=c_e, alpha=0.08
+                )
+
+            s0 = s_arr[0]
+            if beta > 0 and gamma > 0:
+                s_c = gamma / beta
+                if s_c < s0:
+                    self.ax_time.axhline(
+                        s_c, color=c_thresh, linestyle="--", alpha=0.6,
+                        label=f"Threshold (S_c = {int(round(s_c))})",
+                    )
+            self.ax_time.set_title(
+                "SEIR Dynamics",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+
+        elif "SIS" in model.name:
+            i_arr = result.n2
+            if is_disc:
+                self.ax_time.step(
+                    t, s_arr, where="post", color=c_s, linewidth=2.0,
+                    label=result.n1_label,
+                )
+                self.ax_time.step(
+                    t, i_arr, where="post", color=c_i, linewidth=2.2,
+                    label=result.n2_label,
+                )
+                self.ax_time.fill_between(
+                    t, i_arr, step="post", color=c_i, alpha=0.15
+                )
+                self.ax_time.plot(
+                    t, i_arr, "o", color=c_i, markersize=3.0, alpha=0.85
+                )
+                self.ax_time.xaxis.set_major_locator(
+                    MaxNLocator(integer=True)
+                )
+            else:
+                self.ax_time.plot(
+                    t, s_arr, color=c_s, linewidth=2.0,
+                    label=result.n1_label,
+                )
+                self.ax_time.plot(
+                    t, i_arr, color=c_i, linewidth=2.2,
+                    label=result.n2_label,
+                )
+                self.ax_time.fill_between(
+                    t, i_arr, color=c_i, alpha=0.15
+                )
+
+            n_tot = s_arr[0] + i_arr[0]
+            r0 = (beta * n_tot) / gamma if gamma > 0 else 0.0
+            if r0 > 1.0:
+                i_star = n_tot * (1.0 - 1.0 / r0)
+                self.ax_time.axhline(
+                    i_star, color=c_i, linestyle=":", alpha=0.7,
+                    label=f"Endemic I* = {int(round(i_star))}",
+                )
+            self.ax_time.set_title(
+                "SIS Dynamics",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+
+        else:
+            # Classic SIR model.
+            i_arr = result.n2
+            r_arr = (
+                result.n3 if result.n3 is not None else np.zeros_like(t)
+            )
+
+            if is_disc:
+                self.ax_time.step(
+                    t, s_arr, where="post", color=c_s, linewidth=2.0,
+                    label=result.n1_label,
+                )
+                self.ax_time.step(
+                    t, i_arr, where="post", color=c_i, linewidth=2.2,
+                    label=result.n2_label,
+                )
+                self.ax_time.step(
+                    t, r_arr, where="post", color=c_r, linewidth=2.0,
+                    label=result.n3_label or "Recovered (R)",
+                )
+                self.ax_time.fill_between(
+                    t, i_arr, step="post", color=c_i, alpha=0.15
+                )
+                self.ax_time.plot(
+                    t, i_arr, "o", color=c_i, markersize=3.0, alpha=0.85
+                )
+                self.ax_time.xaxis.set_major_locator(
+                    MaxNLocator(integer=True)
+                )
+            else:
+                self.ax_time.plot(
+                    t, s_arr, color=c_s, linewidth=2.0,
+                    label=result.n1_label,
+                )
+                self.ax_time.plot(
+                    t, i_arr, color=c_i, linewidth=2.2,
+                    label=result.n2_label,
+                )
+                self.ax_time.plot(
+                    t, r_arr, color=c_r, linewidth=2.0,
+                    label=result.n3_label or "Recovered (R)",
+                )
+                self.ax_time.fill_between(
+                    t, i_arr, color=c_i, alpha=0.15
+                )
+
+            s0 = s_arr[0]
+            if beta > 0 and gamma > 0:
+                s_c = gamma / beta
+                if s_c < s0:
+                    self.ax_time.axhline(
+                        s_c, color=c_thresh, linestyle="--", alpha=0.6,
+                        label=f"Threshold (S_c = {int(round(s_c))})",
+                    )
+            self.ax_time.set_title(
+                "SIR Dynamics",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+
+        x_lbl = "Generations / Steps (t)" if is_disc else "Time (t)"
+        self.ax_time.set_xlabel(
+            x_lbl, fontsize=10, color=colors["subtext_color"]
+        )
+        self.ax_time.set_ylabel(
+            "Population Count", fontsize=10,
+            color=colors["subtext_color"],
+        )
+        self.ax_time.legend(
+            loc="best", framealpha=0.85,
+            facecolor=colors["legend_face"],
+            edgecolor=colors["legend_edge"], fontsize=8.5,
+        )
+        self.ax_time.grid(
+            True, linestyle="--", alpha=0.35, color=colors["grid"]
+        )
+
+        # -------------------------------------------------------------
+        # 2. Right Subplot: Phase Portrait & Vector Trajectory
+        # -------------------------------------------------------------
+        if "SIS" in model.name:
+            # Trajectory in (S, I) plane with conservation line.
+            i_phase = result.n2
+            n_tot = s_arr[0] + i_phase[0]
+            self.ax_phase.plot(
+                [0, n_tot], [n_tot, 0], "--", color=c_thresh, alpha=0.5,
+                label=f"Constraint (S+I = {int(round(n_tot))})",
+            )
+            self.ax_phase.plot(
+                s_arr, i_phase, color=colors["trajectory"],
+                linewidth=2.2, label="Infection Path",
+            )
+            self.ax_phase.plot(
+                s_arr[0], i_phase[0], "o", color=colors["start"],
+                markersize=8, markeredgecolor="black",
+                markeredgewidth=1.2,
+                label=(
+                    f"Start (S={int(round(s_arr[0]))}, "
+                    f"I={int(round(i_phase[0]))})"
+                ),
+            )
+            self.ax_phase.plot(
+                s_arr[-1], i_phase[-1], "X", color=colors["end"],
+                markersize=9, markeredgecolor="black",
+                markeredgewidth=1.2,
+                label=(
+                    f"Final (S={int(round(s_arr[-1]))}, "
+                    f"I={int(round(i_phase[-1]))})"
+                ),
+            )
+
+            r0 = (beta * n_tot) / gamma if gamma > 0 else 0.0
+            if r0 > 1.0:
+                i_star = n_tot * (1.0 - 1.0 / r0)
+                s_star = n_tot / r0
+                self.ax_phase.plot(
+                    s_star, i_star, "*", color="#fbbf24",
+                    markersize=12, markeredgecolor="black",
+                    markeredgewidth=1.0,
+                    label=f"Endemic (I* = {int(round(i_star))})",
+                )
+
+            # Vector field in (S, I).
+            s_max = max(1.0, float(np.max(s_arr))) * 1.05
+            i_max = max(1.0, float(np.max(i_phase))) * 1.15
+            s_grid = np.linspace(0.0, s_max, 15)
+            i_grid = np.linspace(0.0, i_max, 15)
+            sg, ig = np.meshgrid(s_grid, i_grid)
+            ds = -beta * sg * ig + gamma * ig
+            di = beta * sg * ig - gamma * ig
+            mag = np.hypot(ds, di)
+            mag[mag == 0] = 1.0
+            self.ax_phase.quiver(
+                sg, ig, ds / mag, di / mag,
+                color=colors["subtext_color"],
+                alpha=0.25, angles="xy",
+            )
+            self.ax_phase.set_title(
+                "Phase Portrait (S, I)",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+        else:
+            # SIR and SEIR: Infectious (I) vs Susceptible (S).
+            i_phase = (
+                result.n3
+                if "SEIR" in model.name and result.n3 is not None
+                else result.n2
+            )
+            self.ax_phase.plot(
+                s_arr, i_phase, color=colors["trajectory"],
+                linewidth=2.2, label="Epidemic Path (S, I)",
+            )
+            self.ax_phase.plot(
+                s_arr[0], i_phase[0], "o", color=colors["start"],
+                markersize=8, markeredgecolor="black",
+                markeredgewidth=1.2,
+                label=(
+                    f"Start (S={int(round(s_arr[0]))}, "
+                    f"I={int(round(i_phase[0]))})"
+                ),
+            )
+            peak_idx = int(np.argmax(i_phase))
+            self.ax_phase.plot(
+                s_arr[peak_idx], i_phase[peak_idx], "D",
+                color="#fbbf24", markersize=8,
+                markeredgecolor="black", markeredgewidth=1.2,
+                label=f"Peak (I = {int(round(i_phase[peak_idx]))})",
+            )
+            self.ax_phase.plot(
+                s_arr[-1], i_phase[-1], "X", color=colors["end"],
+                markersize=9, markeredgecolor="black",
+                markeredgewidth=1.2,
+                label=(
+                    f"Final (S={int(round(s_arr[-1]))}, "
+                    f"I={int(round(i_phase[-1]))})"
+                ),
+            )
+
+            # Threshold S_c = gamma / beta.
+            if beta > 0 and gamma > 0:
+                s_c = gamma / beta
+                s_max = max(1.0, float(np.max(s_arr)))
+                if s_c <= s_max * 1.2:
+                    self.ax_phase.axvline(
+                        s_c, color=c_thresh, linestyle="--",
+                        alpha=0.75,
+                        label=f"Threshold (S_c = {int(round(s_c))})",
+                    )
+
+            # Vector field in (S, I).
+            s_max = max(1.0, float(np.max(s_arr))) * 1.05
+            i_max = max(1.0, float(np.max(i_phase))) * 1.15
+            s_grid = np.linspace(0.0, s_max, 15)
+            i_grid = np.linspace(0.0, i_max, 15)
+            sg, ig = np.meshgrid(s_grid, i_grid)
+            ds = -beta * sg * ig
+            di = beta * sg * ig - gamma * ig
+            mag = np.hypot(ds, di)
+            mag[mag == 0] = 1.0
+            self.ax_phase.quiver(
+                sg, ig, ds / mag, di / mag,
+                color=colors["subtext_color"],
+                alpha=0.25, angles="xy",
+            )
+            self.ax_phase.set_title(
+                "Phase Portrait (S, I)",
+                fontsize=10.5,
+                fontweight="bold",
+                color=colors["text_color"],
+                pad=10,
+            )
+
+        self.ax_phase.set_xlabel(
+            "Susceptible Population (S)", fontsize=10,
+            color=colors["subtext_color"],
+        )
+        self.ax_phase.set_ylabel(
+            "Infectious Population (I)", fontsize=10,
+            color=colors["subtext_color"],
+        )
+        self.ax_phase.legend(
+            loc="best", framealpha=0.85,
+            facecolor=colors["legend_face"],
+            edgecolor=colors["legend_edge"], fontsize=8.5,
+        )
+        self.ax_phase.grid(
+            True, linestyle="--", alpha=0.35, color=colors["grid"]
+        )
 
     def _update_plot_single_variable(
         self,

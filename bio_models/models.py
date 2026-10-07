@@ -13,6 +13,7 @@ import numpy as np
 @dataclass
 class SimulationResult:
     """Stores the output of a biological simulation run."""
+
     t: np.ndarray
     n1: np.ndarray
     n2: np.ndarray
@@ -23,6 +24,10 @@ class SimulationResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
     success: bool = True
     message: str = "Simulation completed successfully"
+    n3: Optional[np.ndarray] = None
+    n4: Optional[np.ndarray] = None
+    n3_label: Optional[str] = None
+    n4_label: Optional[str] = None
 
 
 class BiologicalModel(ABC):
@@ -58,8 +63,18 @@ class BiologicalModel(ABC):
         pass
 
     @property
+    def n3_label(self) -> Optional[str]:
+        """Label for variable 3 (e.g., Recovered or Infectious)."""
+        return None
+
+    @property
+    def n4_label(self) -> Optional[str]:
+        """Label for variable 4 (e.g., Recovered in SEIR)."""
+        return None
+
+    @property
     def num_variables(self) -> int:
-        """Number of state variables in system (1 or 2, default 2)."""
+        """Number of state variables in system (1, 2, 3, or 4)."""
         return 2
 
     @property
@@ -71,6 +86,11 @@ class BiologicalModel(ABC):
     def is_frequency_model(self) -> bool:
         """Return True if model tracks allele frequencies in [0, 1]."""
         return False
+
+    @property
+    def is_epidemic_model(self) -> bool:
+        """Return True for compartmental epidemiological models."""
+        return self.topic == "Epidemiology Models"
 
     @property
     @abstractmethod
@@ -1497,6 +1517,404 @@ class MigrationSelectionModel(BiologicalModel):
         return np.array([p_next, 1.0 - p_next], dtype=float)
 
 
+# ---------------------------------------------------------------------
+# 12. Classic SIR Epidemic Model (Kermack & McKendrick)
+# ---------------------------------------------------------------------
+class ClassicSIRModel(BiologicalModel):
+    """Classic Kermack-McKendrick SIR compartmental epidemic model.
+
+    Tracks Susceptible (S), Infectious (I), and Recovered (R)
+    individuals under mass-action transmission and linear recovery.
+
+    Continuous differential equations:
+        dS/dt = -beta * S * I
+        dI/dt = beta * S * I - gamma * I
+        dR/dt = gamma * I
+
+    Discrete recursion equations:
+        Delta_I = min(S, beta * S * I)
+        Delta_R = min(I, gamma * I)
+        S(t+1) = S(t) - Delta_I
+        I(t+1) = I(t) + Delta_I - Delta_R
+        R(t+1) = R(t) + Delta_R
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Epidemiology Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Compartmental Epidemic Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the SIR epidemic model."""
+        return "Classic SIR Model (Kermack & McKendrick)"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (S, I, and R)."""
+        return 3
+
+    @property
+    def n1_label(self) -> str:
+        """Label for susceptible population compartment."""
+        return "Susceptible (S)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for infectious population compartment."""
+        return "Infectious (I)"
+
+    @property
+    def n3_label(self) -> Optional[str]:
+        """Label for recovered / removed population compartment."""
+        return "Recovered (R)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default transmission and recovery rates."""
+        return {
+            "beta": 0.0002,
+            "gamma": 0.10,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI parameter sliders and inputs."""
+        return {
+            "beta": {
+                "label": "Transmission Rate (β):",
+                "min": 0.00001,
+                "max": 0.05,
+                "step": 0.00005,
+                "decimals": 5,
+                "description": (
+                    "Transmission rate per susceptible-infectious contact"
+                ),
+            },
+            "gamma": {
+                "label": "Recovery Rate (γ):",
+                "min": 0.001,
+                "max": 2.0,
+                "step": 0.01,
+                "decimals": 3,
+                "description": (
+                    "Recovery rate (1/γ is mean infectious duration)"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Compute continuous SIR epidemic derivatives."""
+        s = max(0.0, float(state[0]))
+        i = max(0.0, float(state[1]))
+        beta = max(0.0, params.get("beta", 0.0002))
+        gamma = max(0.0, params.get("gamma", 0.10))
+
+        infection = beta * s * i
+        recovery = gamma * i
+
+        ds = -infection
+        di = infection - recovery
+        dr = recovery
+        return np.array([ds, di, dr], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: mass-action infection and removal."""
+        s = max(0.0, float(state[0]))
+        i = max(0.0, float(state[1]))
+        r = max(0.0, float(state[2])) if len(state) > 2 else 0.0
+        beta = max(0.0, params.get("beta", 0.0002))
+        gamma = max(0.0, params.get("gamma", 0.10))
+
+        delta_i = min(s, beta * s * i)
+        delta_r = min(i, gamma * i)
+
+        s_next = max(0.0, s - delta_i)
+        i_next = max(0.0, i + delta_i - delta_r)
+        r_next = max(0.0, r + delta_r)
+        return np.array([s_next, i_next, r_next], dtype=float)
+
+
+# ---------------------------------------------------------------------
+# 13. SIS Endemic Disease Model
+# ---------------------------------------------------------------------
+class SISEndemicModel(BiologicalModel):
+    """Endemic disease model without immunity (SIS dynamics).
+
+    Susceptible individuals become infectious and recover directly
+    back into the susceptible compartment without conferring immunity.
+
+    Continuous differential equations:
+        dS/dt = -beta * S * I + gamma * I
+        dI/dt = beta * S * I - gamma * I
+
+    Discrete recursion equations:
+        Delta_I = min(S, beta * S * I)
+        Delta_R = min(I, gamma * I)
+        S(t+1) = S(t) - Delta_I + Delta_R
+        I(t+1) = I(t) + Delta_I - Delta_R
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Epidemiology Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Compartmental Epidemic Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the SIS endemic model."""
+        return "SIS Model (Endemic Diseases)"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (S and I)."""
+        return 2
+
+    @property
+    def n1_label(self) -> str:
+        """Label for susceptible population compartment."""
+        return "Susceptible (S)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for infectious population compartment."""
+        return "Infectious (I)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default transmission and recovery rates."""
+        return {
+            "beta": 0.0002,
+            "gamma": 0.10,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI parameter sliders and inputs."""
+        return {
+            "beta": {
+                "label": "Transmission Rate (β):",
+                "min": 0.00001,
+                "max": 0.05,
+                "step": 0.00005,
+                "decimals": 5,
+                "description": (
+                    "Transmission rate per susceptible-infectious contact"
+                ),
+            },
+            "gamma": {
+                "label": "Recovery Rate (γ):",
+                "min": 0.001,
+                "max": 2.0,
+                "step": 0.01,
+                "decimals": 3,
+                "description": (
+                    "Recovery rate without immunity back to susceptible"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Compute continuous SIS epidemic derivatives."""
+        s = max(0.0, float(state[0]))
+        i = max(0.0, float(state[1]))
+        beta = max(0.0, params.get("beta", 0.0002))
+        gamma = max(0.0, params.get("gamma", 0.10))
+
+        infection = beta * s * i
+        recovery = gamma * i
+
+        ds = -infection + recovery
+        di = infection - recovery
+        return np.array([ds, di], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: reinfection and recovery without immunity."""
+        s = max(0.0, float(state[0]))
+        i = max(0.0, float(state[1]))
+        beta = max(0.0, params.get("beta", 0.0002))
+        gamma = max(0.0, params.get("gamma", 0.10))
+
+        delta_i = min(s, beta * s * i)
+        delta_r = min(i, gamma * i)
+
+        s_next = max(0.0, s - delta_i + delta_r)
+        i_next = max(0.0, i + delta_i - delta_r)
+        return np.array([s_next, i_next], dtype=float)
+
+
+# ---------------------------------------------------------------------
+# 14. SEIR Model with Incubation Period / Latency
+# ---------------------------------------------------------------------
+class SEIRIncubationModel(BiologicalModel):
+    """SEIR compartmental epidemic model with latent incubation period.
+
+    Incorporates an Exposed (E) non-infectious compartment before
+    progression to Infectious (I) state at incubation rate sigma.
+
+    Continuous differential equations:
+        dS/dt = -beta * S * I
+        dE/dt = beta * S * I - sigma * E
+        dI/dt = sigma * E - gamma * I
+        dR/dt = gamma * I
+
+    Discrete recursion equations:
+        Delta_E = min(S, beta * S * I)
+        Delta_I = min(E, sigma * E)
+        Delta_R = min(I, gamma * I)
+        S(t+1) = S(t) - Delta_E
+        E(t+1) = E(t) + Delta_E - Delta_I
+        I(t+1) = I(t) + Delta_I - Delta_R
+        R(t+1) = R(t) + Delta_R
+    """
+
+    @property
+    def topic(self) -> str:
+        """High-level umbrella topic for sandwich menu organization."""
+        return "Epidemiology Models"
+
+    @property
+    def category(self) -> str:
+        """Category for sandwich menu organization."""
+        return "Compartmental Epidemic Models"
+
+    @property
+    def name(self) -> str:
+        """Display name of the SEIR incubation model."""
+        return "SEIR Model with Incubation Period"
+
+    @property
+    def num_variables(self) -> int:
+        """Number of state variables in system (S, E, I, and R)."""
+        return 4
+
+    @property
+    def n1_label(self) -> str:
+        """Label for susceptible population compartment."""
+        return "Susceptible (S)"
+
+    @property
+    def n2_label(self) -> str:
+        """Label for exposed / latent compartment."""
+        return "Exposed (E)"
+
+    @property
+    def n3_label(self) -> Optional[str]:
+        """Label for infectious population compartment."""
+        return "Infectious (I)"
+
+    @property
+    def n4_label(self) -> Optional[str]:
+        """Label for recovered / removed population compartment."""
+        return "Recovered (R)"
+
+    @property
+    def default_params(self) -> Dict[str, float]:
+        """Default transmission, incubation, and recovery rates."""
+        return {
+            "beta": 0.0002,
+            "sigma": 0.20,
+            "gamma": 0.10,
+        }
+
+    @property
+    def param_meta(self) -> Dict[str, Dict[str, Any]]:
+        """Metadata for UI parameter sliders and inputs."""
+        return {
+            "beta": {
+                "label": "Transmission Rate (β):",
+                "min": 0.00001,
+                "max": 0.05,
+                "step": 0.00005,
+                "decimals": 5,
+                "description": (
+                    "Transmission rate per susceptible-infectious contact"
+                ),
+            },
+            "sigma": {
+                "label": "Incubation Rate (σ):",
+                "min": 0.001,
+                "max": 2.0,
+                "step": 0.01,
+                "decimals": 3,
+                "description": (
+                    "Progression rate from exposed to infectious (1/σ)"
+                ),
+            },
+            "gamma": {
+                "label": "Recovery Rate (γ):",
+                "min": 0.001,
+                "max": 2.0,
+                "step": 0.01,
+                "decimals": 3,
+                "description": (
+                    "Recovery rate (1/γ is mean infectious duration)"
+                ),
+            },
+        }
+
+    def rhs(
+        self, t: float, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Compute continuous SEIR epidemic derivatives."""
+        s = max(0.0, float(state[0]))
+        e = max(0.0, float(state[1]))
+        i = max(0.0, float(state[2]))
+        beta = max(0.0, params.get("beta", 0.0002))
+        sigma = max(0.0, params.get("sigma", 0.20))
+        gamma = max(0.0, params.get("gamma", 0.10))
+
+        infection = beta * s * i
+        onset = sigma * e
+        recovery = gamma * i
+
+        ds = -infection
+        de = infection - onset
+        di = onset - recovery
+        dr = recovery
+        return np.array([ds, de, di, dr], dtype=float)
+
+    def discrete_step(
+        self, state: np.ndarray, params: Dict[str, float]
+    ) -> np.ndarray:
+        """Discrete recursion: latent incubation and infectious spread."""
+        s = max(0.0, float(state[0]))
+        e = max(0.0, float(state[1]))
+        i = max(0.0, float(state[2])) if len(state) > 2 else 0.0
+        r = max(0.0, float(state[3])) if len(state) > 3 else 0.0
+        beta = max(0.0, params.get("beta", 0.0002))
+        sigma = max(0.0, params.get("sigma", 0.20))
+        gamma = max(0.0, params.get("gamma", 0.10))
+
+        delta_e = min(s, beta * s * i)
+        delta_i = min(e, sigma * e)
+        delta_r = min(i, gamma * i)
+
+        s_next = max(0.0, s - delta_e)
+        e_next = max(0.0, e + delta_e - delta_i)
+        i_next = max(0.0, i + delta_i - delta_r)
+        r_next = max(0.0, r + delta_r)
+        return np.array([s_next, e_next, i_next, r_next], dtype=float)
+
+
 # Registry of available models for the sandwich menu
 AVAILABLE_MODELS: List[BiologicalModel] = [
     LotkaVolterraCompetitionModel(),
@@ -1517,4 +1935,7 @@ AVAILABLE_MODELS: List[BiologicalModel] = [
     DiploidSelectionModel(),
     MutationSelectionModel(),
     MigrationSelectionModel(),
+    ClassicSIRModel(),
+    SISEndemicModel(),
+    SEIRIncubationModel(),
 ]

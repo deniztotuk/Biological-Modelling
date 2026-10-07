@@ -59,6 +59,21 @@ def simulate_model(
             p_init = raw_1 / tot
         n1_init = float(np.clip(p_init, 0.0, 1.0))
         n2_init = 1.0 - n1_init
+        y0 = [n1_init, n2_init]
+    elif getattr(model, "is_epidemic_model", False):
+        # Compartmental epidemic models track population counts.
+        n_vars = model.num_variables
+        raw_inits = [
+            float(max(0, int(round(float(initial_state[i])))))
+            if i < len(initial_state)
+            else 0.0
+            for i in range(n_vars)
+        ]
+        if sum(raw_inits) < 1.0:
+            raw_inits[0] = 990.0
+            if len(raw_inits) > 1:
+                raw_inits[1] = 10.0
+        y0 = raw_inits
     else:
         # Species individuals must be positive integers (>= 1)
         n1_init = float(max(1, int(round(float(initial_state[0])))))
@@ -67,6 +82,7 @@ def simulate_model(
             if model.is_single_variable
             else float(max(1, int(round(float(initial_state[1])))))
         )
+        y0 = [n1_init] if model.is_single_variable else [n1_init, n2_init]
 
     if mode == "discrete":
         # In discrete mode, time advances in integer generation steps.
@@ -80,45 +96,32 @@ def simulate_model(
         else:
             steps = max(2, int(num_points))
 
+        n_vars = model.num_variables
         t_arr = np.linspace(t_start, t_end, steps)
-        n1_arr = np.zeros(steps)
-        n2_arr = np.zeros(steps)
+        states_mat = np.zeros((steps, n_vars), dtype=float)
+        curr = np.array(y0, dtype=float)
+        states_mat[0] = curr
 
-        if model.is_single_variable:
-            curr = np.array([n1_init], dtype=float)
-            n1_arr[0] = curr[0]
-            for i in range(1, steps):
-                try:
-                    curr = model.discrete_step(curr, params)
-                except NotImplementedError:
-                    dt = 1.0
-                    curr = curr + dt * model.rhs(float(i), curr, params)
-                curr = np.nan_to_num(
-                    curr, nan=0.0, posinf=1e300, neginf=0.0
-                )
-                curr[0] = max(0.0, curr[0])
-                n1_arr[i] = curr[0]
-        else:
-            curr = np.array([n1_init, n2_init], dtype=float)
-            n1_arr[0] = curr[0]
-            n2_arr[0] = curr[1]
-            for i in range(1, steps):
-                try:
-                    curr = model.discrete_step(curr, params)
-                except NotImplementedError:
-                    dt = 1.0
-                    curr = curr + dt * model.rhs(float(i), curr, params)
-                curr = np.nan_to_num(
-                    curr, nan=0.0, posinf=1e300, neginf=0.0
-                )
-                if getattr(model, "is_frequency_model", False):
-                    curr[0] = float(np.clip(curr[0], 0.0, 1.0))
-                    curr[1] = 1.0 - curr[0]
-                else:
-                    curr[0] = max(0.0, curr[0])
-                    curr[1] = max(0.0, curr[1])
-                n1_arr[i] = curr[0]
-                n2_arr[i] = curr[1]
+        for i in range(1, steps):
+            try:
+                curr = model.discrete_step(curr, params)
+            except NotImplementedError:
+                dt = 1.0
+                curr = curr + dt * model.rhs(float(i), curr, params)
+            curr = np.nan_to_num(
+                curr, nan=0.0, posinf=1e300, neginf=0.0
+            )
+            if getattr(model, "is_frequency_model", False):
+                curr[0] = float(np.clip(curr[0], 0.0, 1.0))
+                curr[1] = 1.0 - curr[0]
+            else:
+                curr = np.maximum(0.0, curr)
+            states_mat[i] = curr
+
+        n1_arr = states_mat[:, 0]
+        n2_arr = states_mat[:, 1] if n_vars >= 2 else np.zeros(steps)
+        n3_arr = states_mat[:, 2] if n_vars >= 3 else None
+        n4_arr = states_mat[:, 3] if n_vars >= 4 else None
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         num_recur_steps = steps - 1
@@ -138,29 +141,26 @@ def simulate_model(
                 "is_frequency_model": getattr(
                     model, "is_frequency_model", False
                 ),
+                "is_epidemic_model": getattr(
+                    model, "is_epidemic_model", False
+                ),
             },
             success=True,
             message=(
                 f"Discrete simulation complete ({num_recur_steps} steps in "
                 f"{elapsed_ms:.1f} ms)"
             ),
+            n3=n3_arr,
+            n4=n4_arr,
+            n3_label=getattr(model, "n3_label", None),
+            n4_label=getattr(model, "n4_label", None),
         )
 
     # Continuous integration via solve_ivp
-    if model.is_single_variable:
-        def ode_system(t, y):
-            """ODE right-hand side for single-species system."""
-            clipped = np.array([max(0.0, y[0])], dtype=float)
-            return model.rhs(t, clipped, params)
-
-        y0 = [n1_init]
-    else:
-        def ode_system(t, y):
-            """ODE right-hand side for two-species interactions."""
-            clipped = np.array([max(0.0, y[0]), max(0.0, y[1])], dtype=float)
-            return model.rhs(t, clipped, params)
-
-        y0 = [n1_init, n2_init]
+    def ode_system(t, y):
+        """ODE right-hand side evaluation with non-negative bounds."""
+        clipped = np.maximum(0.0, y)
+        return model.rhs(t, clipped, params)
 
     try:
         sol = solve_ivp(
@@ -203,14 +203,20 @@ def simulate_model(
                     "is_frequency_model": getattr(
                         model, "is_frequency_model", False
                     ),
+                    "is_epidemic_model": getattr(
+                        model, "is_epidemic_model", False
+                    ),
                 },
                 success=False,
                 message=f"Solver error: {sol.message}",
             )
 
+        n_vars = model.num_variables
         if getattr(model, "is_frequency_model", False):
             n1_res = np.clip(sol.y[0], 0.0, 1.0)
             n2_res = np.clip(1.0 - n1_res, 0.0, 1.0)
+            n3_res = None
+            n4_res = None
         else:
             n1_res = np.maximum(0.0, sol.y[0])
             n2_res = (
@@ -218,6 +224,8 @@ def simulate_model(
                 if model.is_single_variable
                 else np.maximum(0.0, sol.y[1])
             )
+            n3_res = np.maximum(0.0, sol.y[2]) if n_vars >= 3 else None
+            n4_res = np.maximum(0.0, sol.y[3]) if n_vars >= 4 else None
 
         return SimulationResult(
             t=sol.t,
@@ -236,11 +244,18 @@ def simulate_model(
                 "is_frequency_model": getattr(
                     model, "is_frequency_model", False
                 ),
+                "is_epidemic_model": getattr(
+                    model, "is_epidemic_model", False
+                ),
             },
             success=True,
             message=(
                 f"Solved {len(sol.t)} time points in {elapsed_ms:.1f} ms"
             ),
+            n3=n3_res,
+            n4=n4_res,
+            n3_label=getattr(model, "n3_label", None),
+            n4_label=getattr(model, "n4_label", None),
         )
 
     except Exception as e:
@@ -258,6 +273,9 @@ def simulate_model(
                 "error": str(e),
                 "is_frequency_model": getattr(
                     model, "is_frequency_model", False
+                ),
+                "is_epidemic_model": getattr(
+                    model, "is_epidemic_model", False
                 ),
             },
             success=False,
@@ -320,6 +338,36 @@ def export_simulation_to_csv(
                 writer.writerow([
                     _format_csv_number(float(t_val)),
                     _format_csv_number(float(n_val)),
+                ])
+        elif result.n3 is not None and result.n4 is not None:
+            f.write(f"# Column 1: {result.n1_label}\n")
+            f.write(f"# Column 2: {result.n2_label}\n")
+            f.write(f"# Column 3: {result.n3_label}\n")
+            f.write(f"# Column 4: {result.n4_label}\n")
+            writer.writerow(["time", "S", "E", "I", "R"])
+            for t_val, s_val, e_val, i_val, r_val in zip(
+                result.t, result.n1, result.n2, result.n3, result.n4
+            ):
+                writer.writerow([
+                    _format_csv_number(float(t_val)),
+                    _format_csv_number(float(s_val)),
+                    _format_csv_number(float(e_val)),
+                    _format_csv_number(float(i_val)),
+                    _format_csv_number(float(r_val)),
+                ])
+        elif result.n3 is not None:
+            f.write(f"# Column 1: {result.n1_label}\n")
+            f.write(f"# Column 2: {result.n2_label}\n")
+            f.write(f"# Column 3: {result.n3_label}\n")
+            writer.writerow(["time", "S", "I", "R"])
+            for t_val, s_val, i_val, r_val in zip(
+                result.t, result.n1, result.n2, result.n3
+            ):
+                writer.writerow([
+                    _format_csv_number(float(t_val)),
+                    _format_csv_number(float(s_val)),
+                    _format_csv_number(float(i_val)),
+                    _format_csv_number(float(r_val)),
                 ])
         else:
             f.write(f"# Column n1: {result.n1_label}\n")

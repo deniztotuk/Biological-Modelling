@@ -375,6 +375,91 @@ MODEL_DETAILS: Dict[str, Dict[str, Any]] = {
             "frequency p_m."
         ),
     },
+    "Classic SIR Model (Kermack & McKendrick)": {
+        "title": (
+            "Classic SIR Epidemic Model (Kermack & McKendrick 1927)"
+        ),
+        "diff_eq_type": "Continuous Ordinary Differential Equations",
+        "diff_eq": [
+            "dS/dt = -β·S·I",
+            "dI/dt = β·S·I - γ·I",
+            "dR/dt = γ·I,  where R₀ = β·S₀ / γ",
+        ],
+        "disc_eq_type": "Coupled Discrete Difference Equations (Recursion)",
+        "disc_eq": [
+            "ΔI = min(S(t), β·S(t)·I(t)),  ΔR = min(I(t), γ·I(t))",
+            "S(t+1) = S(t) - ΔI",
+            "I(t+1) = I(t) + ΔI - ΔR",
+            "R(t+1) = R(t) + ΔR",
+        ],
+        "scenarios": (
+            "Models epidemic contagion in a population partitioned into "
+            "Susceptible (S), Infectious (I), and Recovered (R) hosts:<br>"
+            "• <b>Basic Reproduction Number (R₀)</b>: Expected secondary "
+            "infections R₀ = β·S₀/γ. If R₀ &gt; 1, an epidemic wave "
+            "propagates; if R₀ ≤ 1, infection decays monotonically.<br>"
+            "• <b>Herd Immunity Threshold</b>: When susceptible density S "
+            "falls below critical threshold S_c = γ/β (fraction 1 - 1/R₀ "
+            "immune), new infections drop below removals (dI/dt &lt; 0).<br>"
+            "• <b>Epidemic Peak & Burnout</b>: Infectious peak occurs "
+            "precisely when S(t) = γ/β, concluding with a positive final "
+            "size of uninfected individuals who escape transmission."
+        ),
+    },
+    "SIS Model (Endemic Diseases)": {
+        "title": "SIS Endemic Disease Model (Infection Without Immunity)",
+        "diff_eq_type": "Continuous Ordinary Differential Equations",
+        "diff_eq": [
+            "dS/dt = -β·S·I + γ·I",
+            "dI/dt = β·S·I - γ·I,  where R₀ = β·N / γ",
+        ],
+        "disc_eq_type": "Coupled Discrete Difference Equations (Recursion)",
+        "disc_eq": [
+            "ΔI = min(S(t), β·S(t)·I(t)),  ΔR = min(I(t), γ·I(t))",
+            "S(t+1) = S(t) - ΔI + ΔR",
+            "I(t+1) = I(t) + ΔI - ΔR",
+        ],
+        "scenarios": (
+            "Models recurrent infections lacking long-term immunity (e.g. "
+            "bacterial infections, rhinovirus, seasonal pathogens):<br>"
+            "• <b>Threshold Bifurcation</b>: A transcritical bifurcation "
+            "governed by R₀ = β·N/γ separating eradication from "
+            "endemicity.<br>"
+            "• <b>Endemic Equilibrium (R₀ &gt; 1)</b>: Infection permanently "
+            "stabilizes at steady state I* = N·(1 - 1/R₀) and S* = N/R₀.<br>"
+            "• <b>Disease Eradication (R₀ ≤ 1)</b>: When recovery outpaces "
+            "transmission, the pathogen goes extinct (I → 0, S → N)."
+        ),
+    },
+    "SEIR Model with Incubation Period": {
+        "title": "SEIR Epidemic Model with Latent Incubation Period",
+        "diff_eq_type": "Continuous Ordinary Differential Equations",
+        "diff_eq": [
+            "dS/dt = -β·S·I",
+            "dE/dt = β·S·I - σ·E",
+            "dI/dt = σ·E - γ·I",
+            "dR/dt = γ·I,  where R₀ = β·S₀ / γ",
+        ],
+        "disc_eq_type": "Coupled Discrete Difference Equations (Recursion)",
+        "disc_eq": [
+            "ΔE = min(S, β·S·I),  ΔI = min(E, σ·E),  ΔR = min(I, γ·I)",
+            "S(t+1) = S(t) - ΔE",
+            "E(t+1) = E(t) + ΔE - ΔI",
+            "I(t+1) = I(t) + ΔI - ΔR",
+            "R(t+1) = R(t) + ΔR",
+        ],
+        "scenarios": (
+            "Incorporates an Exposed (E) latent compartment where infected "
+            "hosts are not yet infectious during incubation period 1/σ:<br>"
+            "• <b>Latent Phase Delay</b>: Peak of exposed individuals E(t) "
+            "precedes infectious peak I(t), delaying wave acceleration.<br>"
+            "• <b>Curve Flattening</b>: Longer incubation periods spread "
+            "the epidemic over longer durations with lower peak loads.<br>"
+            "• <b>Intervention Modeling</b>: Reductions in contact rate β "
+            "(isolation, masks, distancing) drain the exposed pool E and "
+            "suppress active transmissions."
+        ),
+    },
 }
 
 
