@@ -19,6 +19,10 @@ _SAVE_LIGHT = f"{_ICONS_DIR}/save_light.svg"
 _SAVE_DARK = f"{_ICONS_DIR}/save_dark.svg"
 _INFO_LIGHT = f"{_ICONS_DIR}/info_light.svg"
 _INFO_DARK = f"{_ICONS_DIR}/info_dark.svg"
+_OVERLAY_LIGHT = f"{_ICONS_DIR}/overlay_light.svg"
+_OVERLAY_DARK = f"{_ICONS_DIR}/overlay_dark.svg"
+_CLEAR_LIGHT = f"{_ICONS_DIR}/clear_light.svg"
+_CLEAR_DARK = f"{_ICONS_DIR}/clear_dark.svg"
 
 
 def _ensure_icons():
@@ -97,6 +101,40 @@ def _ensure_icons():
             'stroke="#a1a1aa" stroke-width="1.5" stroke-linecap="round" '
             'stroke-linejoin="round"/></svg>'
         ),
+        _OVERLAY_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" '
+            'viewBox="0 0 24 24" fill="none" stroke="#475569" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<polygon points="12 2 2 7 12 12 22 7 12 2"/>'
+            '<polyline points="2 17 12 22 22 17"/>'
+            '<polyline points="2 12 12 17 22 12"/></svg>'
+        ),
+        _OVERLAY_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" '
+            'viewBox="0 0 24 24" fill="none" stroke="#e4e4e7" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<polygon points="12 2 2 7 12 12 22 7 12 2"/>'
+            '<polyline points="2 17 12 22 22 17"/>'
+            '<polyline points="2 12 12 17 22 12"/></svg>'
+        ),
+        _CLEAR_LIGHT: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" '
+            'viewBox="0 0 24 24" fill="none" stroke="#64748b" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 '
+            '0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+            '<line x1="10" y1="11" x2="10" y2="17"/>'
+            '<line x1="14" y1="11" x2="14" y2="17"/></svg>'
+        ),
+        _CLEAR_DARK: (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" '
+            'viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 '
+            '0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+            '<line x1="10" y1="11" x2="10" y2="17"/>'
+            '<line x1="14" y1="11" x2="14" y2="17"/></svg>'
+        ),
     }
     for path, content in icons.items():
         # Write or update icon file if missing or content differs.
@@ -131,6 +169,20 @@ def get_info_icon(theme: str = "dark") -> QIcon:
     """Return modern vector info circle icon for the active theme."""
     _ensure_icons()
     path = _INFO_LIGHT if theme == "light" else _INFO_DARK
+    return QIcon(path)
+
+
+def get_overlay_icon(theme: str = "dark") -> QIcon:
+    """Return vector layers overlay icon for the active theme."""
+    _ensure_icons()
+    path = _OVERLAY_LIGHT if theme == "light" else _OVERLAY_DARK
+    return QIcon(path)
+
+
+def get_clear_icon(theme: str = "dark") -> QIcon:
+    """Return vector clear trash icon for the active theme."""
+    _ensure_icons()
+    path = _CLEAR_LIGHT if theme == "light" else _CLEAR_DARK
     return QIcon(path)
 
 
@@ -591,6 +643,55 @@ QPushButton#ModelInfoButton {
 
 QPushButton#ModelInfoButton:hover {
     background-color: #e2e8f0;
+}
+
+QPushButton#KeepTrajectoriesButton {
+    background-color: #ffffff;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 7px 12px;
+    border: 1px solid #cbd5e1;
+}
+
+QPushButton#KeepTrajectoriesButton:hover {
+    background-color: #f8fafc;
+    border: 1px solid #94a3b8;
+    color: #1e293b;
+}
+
+QPushButton#KeepTrajectoriesButton:checked {
+    background-color: #eff6ff;
+    border: 1.5px solid #2563eb;
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+QPushButton#KeepTrajectoriesButton:checked:hover {
+    background-color: #dbeafe;
+    border: 1.5px solid #1d4ed8;
+}
+
+QPushButton#ClearOverlayButton {
+    background-color: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 5px;
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+}
+
+QPushButton#ClearOverlayButton:hover {
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+}
+
+QPushButton#ClearOverlayButton:disabled {
+    color: #cbd5e1;
+    border-color: #f1f5f9;
 }
 
 QToolTip {
@@ -1176,6 +1277,55 @@ QPushButton#ModelInfoButton {
 
 QPushButton#ModelInfoButton:hover {
     background-color: #27272a;
+}
+
+QPushButton#KeepTrajectoriesButton {
+    background-color: #202023;
+    color: #a1a1aa;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 7px 12px;
+    border: 1px solid #333338;
+}
+
+QPushButton#KeepTrajectoriesButton:hover {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    color: #f4f4f5;
+}
+
+QPushButton#KeepTrajectoriesButton:checked {
+    background-color: #1e293b;
+    border: 1.5px solid #3b82f6;
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+QPushButton#KeepTrajectoriesButton:checked:hover {
+    background-color: #172554;
+    border: 1.5px solid #60a5fa;
+}
+
+QPushButton#ClearOverlayButton {
+    background-color: #202023;
+    color: #71717a;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 5px;
+    padding: 6px 10px;
+    border: 1px solid #27272a;
+}
+
+QPushButton#ClearOverlayButton:hover {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    color: #e4e4e7;
+}
+
+QPushButton#ClearOverlayButton:disabled {
+    color: #3f3f46;
+    border-color: #18181b;
 }
 
 QToolTip {

@@ -31,7 +31,12 @@ from PyQt6.QtWidgets import (
 
 from bio_models.engine import export_simulation_to_csv
 from bio_models.models import BiologicalModel, SimulationResult
-from bio_models.ui.styles import get_plot_colors, get_save_icon
+from bio_models.ui.styles import (
+    get_clear_icon,
+    get_overlay_icon,
+    get_plot_colors,
+    get_save_icon,
+)
 
 matplotlib.use("QtAgg")
 
@@ -53,12 +58,17 @@ class BioPlotCanvas(QWidget):
     """
 
     export_completed = pyqtSignal(str)
+    overlay_toggled = pyqtSignal(bool)
+    overlay_history_changed = pyqtSignal(int)
 
     def __init__(self, theme: str = "light", parent=None):
         super().__init__(parent)
         self.theme = theme
         self._current_result: Optional[SimulationResult] = None
         self._current_model: Optional[BiologicalModel] = None
+        self.keep_previous: bool = False
+        self._overlay_history: list = []
+        self.max_overlay_history: int = 8
 
         self._resize_timer = QTimer(self)
         self._resize_timer.setSingleShot(True)
@@ -76,6 +86,7 @@ class BioPlotCanvas(QWidget):
         canvas_header = QWidget()
         ch_layout = QHBoxLayout(canvas_header)
         ch_layout.setContentsMargins(0, 0, 0, 0)
+        ch_layout.setSpacing(8)
 
         self.info_lbl = QLabel(
             "Ready — select a model from sandwich menu and run simulation."
@@ -83,6 +94,28 @@ class BioPlotCanvas(QWidget):
         self.info_lbl.setObjectName("CanvasInfoLabel")
         ch_layout.addWidget(self.info_lbl)
         ch_layout.addStretch()
+
+        self.overlay_btn = QPushButton("Keep Previous Trajectories")
+        self.overlay_btn.setObjectName("KeepTrajectoriesButton")
+        self.overlay_btn.setCheckable(True)
+        self.overlay_btn.setIcon(get_overlay_icon(self.theme))
+        self.overlay_btn.setIconSize(QSize(13, 13))
+        self.overlay_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.overlay_btn.setToolTip(
+            "Retain previous simulation runs in background (Ctrl+K)"
+        )
+        self.overlay_btn.toggled.connect(self.set_keep_previous)
+        ch_layout.addWidget(self.overlay_btn)
+
+        self.clear_btn = QPushButton("Clear")
+        self.clear_btn.setObjectName("ClearOverlayButton")
+        self.clear_btn.setIcon(get_clear_icon(self.theme))
+        self.clear_btn.setIconSize(QSize(12, 12))
+        self.clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.clear_btn.setToolTip("Clear background trajectory overlays")
+        self.clear_btn.setEnabled(False)
+        self.clear_btn.clicked.connect(self.clear_overlay_history)
+        ch_layout.addWidget(self.clear_btn)
 
         self.export_btn = QPushButton("Save")
         self.export_btn.setObjectName("SaveGraphButton")
@@ -119,10 +152,54 @@ class BioPlotCanvas(QWidget):
         self.theme = theme
         if hasattr(self, "export_btn"):
             self.export_btn.setIcon(get_save_icon(self.theme))
+        if hasattr(self, "overlay_btn"):
+            self.overlay_btn.setIcon(get_overlay_icon(self.theme))
+        if hasattr(self, "clear_btn"):
+            self.clear_btn.setIcon(get_clear_icon(self.theme))
         if self._current_result and self._current_model:
             self.update_plot(self._current_result, self._current_model)
         else:
             self._apply_initial_styling()
+
+    def set_keep_previous(self, enabled: bool) -> None:
+        """Toggle trajectory overlay retention mode."""
+        enabled_bool = bool(enabled)
+        if self.keep_previous == enabled_bool:
+            if hasattr(self, "overlay_btn"):
+                if self.overlay_btn.isChecked() != enabled_bool:
+                    self.overlay_btn.blockSignals(True)
+                    self.overlay_btn.setChecked(enabled_bool)
+                    self.overlay_btn.blockSignals(False)
+            return
+
+        self.keep_previous = enabled_bool
+        if hasattr(self, "overlay_btn"):
+            if self.overlay_btn.isChecked() != enabled_bool:
+                self.overlay_btn.blockSignals(True)
+                self.overlay_btn.setChecked(enabled_bool)
+                self.overlay_btn.blockSignals(False)
+
+        if not self.keep_previous:
+            self.clear_overlay_history()
+        else:
+            self._update_clear_btn()
+
+        self.overlay_toggled.emit(self.keep_previous)
+
+    def clear_overlay_history(self) -> None:
+        """Clear retained trajectory runs and redraw active simulation."""
+        had_items = len(self._overlay_history) > 0
+        self._overlay_history.clear()
+        self._update_clear_btn()
+        if had_items and self._current_result and self._current_model:
+            self.update_plot(self._current_result, self._current_model)
+
+    def _update_clear_btn(self) -> None:
+        # Update clear button enabled state and signal history count.
+        count = len(self._overlay_history)
+        if hasattr(self, "clear_btn"):
+            self.clear_btn.setEnabled(count > 0)
+        self.overlay_history_changed.emit(count)
 
     def _apply_initial_styling(self):
         colors = get_plot_colors(self.theme)
@@ -202,8 +279,29 @@ class BioPlotCanvas(QWidget):
         self, result: SimulationResult, model: BiologicalModel
     ) -> None:
         """Update both subplots with simulation data."""
+        if self.keep_previous:
+            if (
+                self._current_result is not None
+                and self._current_model is not None
+                and self._current_result is not result
+            ):
+                same_model = (
+                    self._current_model.name == model.name
+                    and self._current_result.metadata.get("mode")
+                    == result.metadata.get("mode")
+                )
+                if same_model and self._current_result.success:
+                    self._overlay_history.append(self._current_result)
+                    if len(self._overlay_history) > self.max_overlay_history:
+                        self._overlay_history.pop(0)
+                elif not same_model:
+                    self._overlay_history.clear()
+        else:
+            self._overlay_history.clear()
+
         self._current_result = result
         self._current_model = model
+        self._update_clear_btn()
 
         colors = get_plot_colors(self.theme)
         self.figure.set_facecolor(colors["figure_facecolor"])
@@ -352,6 +450,138 @@ class BioPlotCanvas(QWidget):
                 )
         self.info_lbl.setText(msg)
 
+    def _render_overlay_epidemic(
+        self,
+        model: BiologicalModel,
+        is_disc: bool,
+        c_s: str,
+        c_e: str,
+        c_i: str,
+        c_r: str,
+        traj_color: str,
+    ) -> None:
+        # Draw past epidemic runs faintly across time and phase axes.
+        num_past = len(self._overlay_history)
+        if num_past == 0:
+            return
+
+        for idx, past in enumerate(self._overlay_history):
+            alpha = 0.12 + 0.18 * ((idx + 1) / num_past)
+            past_t = past.t
+            past_s = past.n1
+
+            if "SEIR" in model.name:
+                p_e = past.n2
+                p_i = (
+                    past.n3
+                    if past.n3 is not None
+                    else np.zeros_like(past_t)
+                )
+                p_r = (
+                    past.n4
+                    if past.n4 is not None
+                    else np.zeros_like(past_t)
+                )
+                if is_disc:
+                    self.ax_time.step(
+                        past_t, past_s, where="post", color=c_s,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.step(
+                        past_t, p_e, where="post", color=c_e,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.step(
+                        past_t, p_i, where="post", color=c_i,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.step(
+                        past_t, p_r, where="post", color=c_r,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                else:
+                    self.ax_time.plot(
+                        past_t, past_s, color=c_s, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.plot(
+                        past_t, p_e, color=c_e, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.plot(
+                        past_t, p_i, color=c_i, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.plot(
+                        past_t, p_r, color=c_r, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                self.ax_phase.plot(
+                    past_s, p_i, linestyle="--", color=traj_color,
+                    linewidth=1.3, alpha=alpha,
+                )
+            elif "SIS" in model.name:
+                p_i = past.n2
+                if is_disc:
+                    self.ax_time.step(
+                        past_t, past_s, where="post", color=c_s,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.step(
+                        past_t, p_i, where="post", color=c_i,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                else:
+                    self.ax_time.plot(
+                        past_t, past_s, color=c_s, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.plot(
+                        past_t, p_i, color=c_i, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                self.ax_phase.plot(
+                    past_s, p_i, linestyle="--", color=traj_color,
+                    linewidth=1.3, alpha=alpha,
+                )
+            else:
+                p_i = past.n2
+                p_r = (
+                    past.n3
+                    if past.n3 is not None
+                    else np.zeros_like(past_t)
+                )
+                if is_disc:
+                    self.ax_time.step(
+                        past_t, past_s, where="post", color=c_s,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.step(
+                        past_t, p_i, where="post", color=c_i,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.step(
+                        past_t, p_r, where="post", color=c_r,
+                        linestyle="--", linewidth=1.2, alpha=alpha,
+                    )
+                else:
+                    self.ax_time.plot(
+                        past_t, past_s, color=c_s, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.plot(
+                        past_t, p_i, color=c_i, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                    self.ax_time.plot(
+                        past_t, p_r, color=c_r, linestyle="--",
+                        linewidth=1.2, alpha=alpha,
+                    )
+                self.ax_phase.plot(
+                    past_s, p_i, linestyle="--", color=traj_color,
+                    linewidth=1.3, alpha=alpha,
+                )
+
     def _update_plot_epidemic_model(
         self,
         result: SimulationResult,
@@ -376,6 +606,15 @@ class BioPlotCanvas(QWidget):
         # -------------------------------------------------------------
         # 1. Left Subplot: Epidemic Waves Over Time
         # -------------------------------------------------------------
+        self._render_overlay_epidemic(
+            model=model,
+            is_disc=is_disc,
+            c_s=c_s,
+            c_e=c_e,
+            c_i=c_i,
+            c_r=c_r,
+            traj_color=colors["trajectory"],
+        )
         if "SEIR" in model.name:
             e_arr = result.n2
             i_arr = (
@@ -734,6 +973,53 @@ class BioPlotCanvas(QWidget):
             True, linestyle="--", alpha=0.35, color=colors["grid"]
         )
 
+    def _render_overlay_single_variable(
+        self,
+        model: BiologicalModel,
+        is_disc: bool,
+        c1: str,
+        traj_color: str,
+        n_grid: np.ndarray,
+    ) -> None:
+        # Draw past single-variable runs faintly across time and phase.
+        num_past = len(self._overlay_history)
+        if num_past == 0:
+            return
+
+        for idx, past in enumerate(self._overlay_history):
+            alpha = 0.12 + 0.18 * ((idx + 1) / num_past)
+            if is_disc:
+                self.ax_time.step(
+                    past.t, past.n1, where="post", color=c1,
+                    linestyle="--", linewidth=1.3, alpha=alpha,
+                )
+                past_next = np.array([
+                    model.discrete_step(np.array([val]), past.parameters)[0]
+                    for val in n_grid
+                ])
+                self.ax_phase.plot(
+                    n_grid, past_next, linestyle="--", color=c1,
+                    linewidth=1.2, alpha=alpha,
+                )
+                if len(past.n1) > 1:
+                    self.ax_phase.plot(
+                        past.n1[:-1], past.n1[1:], ":",
+                        color=traj_color, linewidth=1.1, alpha=alpha,
+                    )
+            else:
+                self.ax_time.plot(
+                    past.t, past.n1, color=c1, linestyle="--",
+                    linewidth=1.3, alpha=alpha,
+                )
+                past_rates = np.array([
+                    model.rhs(0.0, np.array([val]), past.parameters)[0]
+                    for val in n_grid
+                ])
+                self.ax_phase.plot(
+                    n_grid, past_rates, linestyle="--", color=c1,
+                    linewidth=1.2, alpha=alpha,
+                )
+
     def _update_plot_single_variable(
         self,
         result: SimulationResult,
@@ -749,6 +1035,29 @@ class BioPlotCanvas(QWidget):
         traj_color = colors["trajectory"]
         params = result.parameters
         is_disc = result.metadata.get("mode") == "discrete"
+
+        # Compute grid limits accounting for previous runs
+        grid_max = max(10.0, float(np.max(n1)) * 1.25)
+        if "K" in params:
+            grid_max = max(grid_max, float(params["K"]) * 1.25)
+        for past in self._overlay_history:
+            f_n1 = past.n1[np.isfinite(past.n1)]
+            if len(f_n1) > 0:
+                grid_max = max(grid_max, float(np.max(f_n1)) * 1.25)
+            if "K" in past.parameters:
+                grid_max = max(
+                    grid_max, float(past.parameters["K"]) * 1.25
+                )
+        n_grid = np.linspace(0.0, grid_max, 250)
+
+        # Render background overlays if active
+        self._render_overlay_single_variable(
+            model=model,
+            is_disc=is_disc,
+            c1=c1,
+            traj_color=traj_color,
+            n_grid=n_grid,
+        )
 
         # -------------------------------------------------------------
         # 1. Left Subplot: Population Dynamics Over Time
@@ -792,6 +1101,11 @@ class BioPlotCanvas(QWidget):
         else:
             y_max = max(1.0, np.max(n1) * 1.15)
 
+        for past in self._overlay_history:
+            f_n1 = past.n1[np.isfinite(past.n1)]
+            if len(f_n1) > 0:
+                y_max = max(y_max, float(np.max(f_n1)) * 1.15)
+
         self.ax_time.set_title(
             "Population Dynamics",
             fontsize=10.5,
@@ -831,10 +1145,6 @@ class BioPlotCanvas(QWidget):
         # -------------------------------------------------------------
         # 2. Right Subplot: 1D Phase Dynamics / Return Map
         # -------------------------------------------------------------
-        grid_max = max(10.0, float(np.max(n1)) * 1.25)
-        if "K" in params:
-            grid_max = max(grid_max, float(params["K"]) * 1.25)
-        n_grid = np.linspace(0.0, grid_max, 250)
 
         if is_disc:
             # Discrete Return Map: n(t+1) vs n(t)
@@ -1011,6 +1321,60 @@ class BioPlotCanvas(QWidget):
         for text in leg_phase.get_texts():
             text.set_color(colors["text_color"])
 
+    def _render_overlay_frequency_model(
+        self,
+        model: BiologicalModel,
+        is_disc: bool,
+        c1: str,
+        c2: str,
+        p_grid: np.ndarray,
+    ) -> None:
+        # Draw past allele frequency runs faintly across time and phase.
+        num_past = len(self._overlay_history)
+        if num_past == 0:
+            return
+
+        for idx, past in enumerate(self._overlay_history):
+            alpha = 0.12 + 0.18 * ((idx + 1) / num_past)
+            if is_disc:
+                self.ax_time.step(
+                    past.t, past.n1, where="post", color=c1,
+                    linestyle="--", linewidth=1.3, alpha=alpha,
+                )
+                self.ax_time.step(
+                    past.t, past.n2, where="post", color=c2,
+                    linestyle="--", linewidth=1.3, alpha=alpha,
+                )
+                past_next = np.array([
+                    model.discrete_step(
+                        np.array([val, 1.0 - val]), past.parameters
+                    )[0]
+                    for val in p_grid
+                ])
+                self.ax_phase.plot(
+                    p_grid, past_next, linestyle="--", color=c1,
+                    linewidth=1.2, alpha=alpha,
+                )
+            else:
+                self.ax_time.plot(
+                    past.t, past.n1, color=c1, linestyle="--",
+                    linewidth=1.3, alpha=alpha,
+                )
+                self.ax_time.plot(
+                    past.t, past.n2, color=c2, linestyle="--",
+                    linewidth=1.3, alpha=alpha,
+                )
+                past_rates = np.array([
+                    model.rhs(
+                        0.0, np.array([val, 1.0 - val]), past.parameters
+                    )[0]
+                    for val in p_grid
+                ])
+                self.ax_phase.plot(
+                    p_grid, past_rates, linestyle="--", color=c1,
+                    linewidth=1.2, alpha=alpha,
+                )
+
     def _update_plot_frequency_model(
         self,
         result: SimulationResult,
@@ -1025,6 +1389,16 @@ class BioPlotCanvas(QWidget):
         c2 = colors["n2"]
         params = result.parameters
         is_disc = result.metadata.get("mode") == "discrete"
+        p_grid = np.linspace(0.0, 1.0, 200)
+
+        # Render background overlays if active
+        self._render_overlay_frequency_model(
+            model=model,
+            is_disc=is_disc,
+            c1=c1,
+            c2=c2,
+            p_grid=p_grid,
+        )
 
         # -------------------------------------------------------------
         # 1. Left Subplot: Allele Frequency Dynamics Over Time
@@ -1110,7 +1484,6 @@ class BioPlotCanvas(QWidget):
         # -------------------------------------------------------------
         # 2. Right Subplot: Selection Gradient / Discrete Return Map
         # -------------------------------------------------------------
-        p_grid = np.linspace(0.0, 1.0, 200)
 
         if is_disc:
             # Discrete Return Map: p(t+1) vs p(t)
@@ -1305,6 +1678,43 @@ class BioPlotCanvas(QWidget):
         for text in leg_phase.get_texts():
             text.set_color(colors["text_color"])
 
+    def _render_overlay_two_variable(
+        self,
+        is_disc: bool,
+        c1: str,
+        c2: str,
+        traj_color: str,
+    ) -> None:
+        # Draw past two-variable runs faintly across time and phase axes.
+        num_past = len(self._overlay_history)
+        if num_past == 0:
+            return
+
+        for idx, past in enumerate(self._overlay_history):
+            alpha = 0.12 + 0.18 * ((idx + 1) / num_past)
+            if is_disc:
+                self.ax_time.step(
+                    past.t, past.n1, where="post", color=c1,
+                    linestyle="--", linewidth=1.3, alpha=alpha,
+                )
+                self.ax_time.step(
+                    past.t, past.n2, where="post", color=c2,
+                    linestyle="--", linewidth=1.3, alpha=alpha,
+                )
+            else:
+                self.ax_time.plot(
+                    past.t, past.n1, color=c1, linestyle="--",
+                    linewidth=1.3, alpha=alpha,
+                )
+                self.ax_time.plot(
+                    past.t, past.n2, color=c2, linestyle="--",
+                    linewidth=1.3, alpha=alpha,
+                )
+            self.ax_phase.plot(
+                past.n1, past.n2, linestyle="--", color=traj_color,
+                linewidth=1.3, alpha=alpha,
+            )
+
     def _update_plot_two_variable(
         self,
         result: SimulationResult,
@@ -1320,8 +1730,17 @@ class BioPlotCanvas(QWidget):
 
         c1 = colors["n1"]
         c2 = colors["n2"]
+        traj_color = colors["trajectory"]
 
         is_disc = result.metadata.get("mode") == "discrete"
+
+        # Render background overlays if active
+        self._render_overlay_two_variable(
+            is_disc=is_disc,
+            c1=c1,
+            c2=c2,
+            traj_color=traj_color,
+        )
 
         # -------------------------------------------------------------
         # 1. Left Subplot: Population Dynamics Over Time
@@ -1393,6 +1812,13 @@ class BioPlotCanvas(QWidget):
         finite_n2 = n2[np.isfinite(n2)]
         max_1 = float(np.max(finite_n1)) if len(finite_n1) > 0 else 1.0
         max_2 = float(np.max(finite_n2)) if len(finite_n2) > 0 else 1.0
+        for past in self._overlay_history:
+            f_n1 = past.n1[np.isfinite(past.n1)]
+            f_n2 = past.n2[np.isfinite(past.n2)]
+            if len(f_n1) > 0:
+                max_1 = max(max_1, float(np.max(f_n1)))
+            if len(f_n2) > 0:
+                max_2 = max(max_2, float(np.max(f_n2)))
         self.ax_time.set_ylim(
             bottom=0,
             top=max(1.0, max(max_1, max_2) * 1.15),
@@ -1480,8 +1906,15 @@ class BioPlotCanvas(QWidget):
                     )
 
         # Plot Nullclines (Zero-growth isoclines) if available
-        max_n1 = max(10.0, np.max(n1) * 1.25)
-        max_n2 = max(10.0, np.max(n2) * 1.25)
+        max_n1 = max(10.0, float(np.max(n1)) * 1.25)
+        max_n2 = max(10.0, float(np.max(n2)) * 1.25)
+        for past in self._overlay_history:
+            f_n1 = past.n1[np.isfinite(past.n1)]
+            f_n2 = past.n2[np.isfinite(past.n2)]
+            if len(f_n1) > 0:
+                max_n1 = max(max_n1, float(np.max(f_n1)) * 1.25)
+            if len(f_n2) > 0:
+                max_n2 = max(max_n2, float(np.max(f_n2)) * 1.25)
         nullclines = model.get_nullclines(
             result.parameters, (0, max_n1), (0, max_n2)
         )

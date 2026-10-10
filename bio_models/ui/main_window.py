@@ -112,6 +112,28 @@ class MainWindow(QMainWindow):
         toggle_menu_action.triggered.connect(self._toggle_menu)
         view_menu.addAction(toggle_menu_action)
 
+        self.keep_traj_action = QAction(
+            "&Keep Previous Trajectories", self, checkable=True
+        )
+        self.keep_traj_action.setShortcut(QKeySequence("Ctrl+K"))
+        self.keep_traj_action.setStatusTip(
+            "Keep previous trajectories faintly rendered in background"
+        )
+        self.keep_traj_action.triggered.connect(self._toggle_keep_trajectories)
+        view_menu.addAction(self.keep_traj_action)
+
+        self.clear_traj_action = QAction(
+            "&Clear Trajectories Overlay", self
+        )
+        self.clear_traj_action.setStatusTip(
+            "Clear all background trajectory overlays"
+        )
+        self.clear_traj_action.setEnabled(False)
+        self.clear_traj_action.triggered.connect(
+            self._clear_trajectories_overlay
+        )
+        view_menu.addAction(self.clear_traj_action)
+
         # 3. Settings Menu (Theme Selection)
         settings_menu = menu_bar.addMenu("&Settings")
         theme_menu = settings_menu.addMenu("&Theme")
@@ -214,6 +236,20 @@ class MainWindow(QMainWindow):
         self.canvas_widget.export_completed.connect(self._on_export_completed)
         content_splitter.addWidget(self.canvas_widget)
 
+        # Trajectory overlay synchronization between panel, canvas, and menu
+        self.param_panel.overlay_toggled.connect(
+            self._on_overlay_toggled_from_panel
+        )
+        self.canvas_widget.overlay_toggled.connect(
+            self._on_overlay_toggled_from_canvas
+        )
+        self.canvas_widget.overlay_history_changed.connect(
+            self._on_overlay_history_changed
+        )
+        self.param_panel.clear_overlay_requested.connect(
+            self.canvas_widget.clear_overlay_history
+        )
+
         # Proportions: ~30% params, ~70% plot.
         content_splitter.setSizes([380, 820])
         content_splitter.setStretchFactor(0, 0)
@@ -305,14 +341,60 @@ class MainWindow(QMainWindow):
         else:
             self.menu_toggle_btn.setText("✕  Hide Menu")
 
+    def _toggle_keep_trajectories(self, checked: bool):
+        # Toggle overlay mode via menu action.
+        if hasattr(self, "canvas_widget"):
+            self.canvas_widget.set_keep_previous(checked)
+
+    def _clear_trajectories_overlay(self):
+        # Clear background trajectory overlays via menu action.
+        if hasattr(self, "canvas_widget"):
+            self.canvas_widget.clear_overlay_history()
+
+    def _on_overlay_toggled_from_panel(self, checked: bool):
+        # Sync canvas and menu bar when overlay toggled from parameter panel.
+        if hasattr(self, "canvas_widget"):
+            self.canvas_widget.set_keep_previous(checked)
+        if hasattr(self, "keep_traj_action"):
+            self.keep_traj_action.setChecked(checked)
+
+    def _on_overlay_toggled_from_canvas(self, checked: bool):
+        # Sync param panel and menu bar when overlay toggled from canvas.
+        if hasattr(self, "param_panel"):
+            self.param_panel.set_keep_trajectories(checked)
+        if hasattr(self, "keep_traj_action"):
+            self.keep_traj_action.setChecked(checked)
+
+    def _on_overlay_history_changed(self, count: int):
+        # Update clear actions and buttons state when history count changes.
+        has_overlays = count > 0
+        if hasattr(self, "param_panel"):
+            self.param_panel.set_clear_enabled(has_overlays)
+        if hasattr(self, "clear_traj_action"):
+            self.clear_traj_action.setEnabled(has_overlays)
+
     def _on_model_selected(self, model: BiologicalModel, mode: str):
         # Update parameter inputs and run simulation on model switch.
+        self.canvas_widget.clear_overlay_history()
+        self.canvas_widget._current_model = None
+        self.canvas_widget._current_result = None
         self.param_panel.set_model(model, mode)
+        if (
+            self.canvas_widget._current_result is None
+            or self.canvas_widget._current_model is not model
+        ):
+            self.run_simulation()
+        self.canvas_widget.clear_overlay_history()
         self.status_bar.showMessage(f"Selected: {model.name} [{mode}]")
-        self.run_simulation()
 
     def run_simulation(self):
         """Execute simulation with current inputs and refresh canvas."""
+        if hasattr(self, "param_panel") and hasattr(
+            self.param_panel, "_param_change_timer"
+        ):
+            if self.param_panel._param_change_timer.isActive():
+                self.param_panel._param_change_timer.stop()
+
         inputs = self.param_panel.get_simulation_inputs()
         model = inputs["model"]
         if not model:

@@ -4,7 +4,7 @@ Generates input fields, preset selectors, and simulation controls.
 """
 
 from typing import Any, Dict, Optional
-from PyQt6.QtCore import QPoint, QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QPoint, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -30,7 +30,12 @@ from bio_models.models import (
     LotkaVolterraCompetitionModel,
 )
 from bio_models.presets import PRESETS
-from bio_models.ui.styles import get_info_icon, get_play_icon
+from bio_models.ui.styles import (
+    get_clear_icon,
+    get_info_icon,
+    get_overlay_icon,
+    get_play_icon,
+)
 
 
 class ModelInfoButton(QPushButton):
@@ -85,6 +90,8 @@ class ParameterPanel(QWidget):
 
     simulate_requested = pyqtSignal()
     relationship_changed = pyqtSignal(str)
+    overlay_toggled = pyqtSignal(bool)
+    clear_overlay_requested = pyqtSignal()
 
     def __init__(self, theme: str = "dark", parent=None):
         super().__init__(parent)
@@ -93,12 +100,20 @@ class ParameterPanel(QWidget):
         self.mode: str = "continuous"
         self._param_inputs: Dict[str, QDoubleSpinBox] = {}
         self._just_changed_index: bool = False
+        self._suppress_auto_simulate: bool = False
         self.mode_badge: Optional[QPushButton] = None
         self.start_time_lbl: Optional[QLabel] = None
         self.end_time_lbl: Optional[QLabel] = None
         self.points_lbl: Optional[QLabel] = None
         self.points_spin: Optional[QSpinBox] = None
         self.info_btn: Optional[ModelInfoButton] = None
+
+        self._param_change_timer = QTimer(self)
+        self._param_change_timer.setSingleShot(True)
+        self._param_change_timer.setInterval(120)
+        self._param_change_timer.timeout.connect(
+            self._on_param_timer_timeout
+        )
 
         self._init_ui()
 
@@ -125,6 +140,39 @@ class ParameterPanel(QWidget):
         scroll.setWidget(self.scroll_content)
         main_layout.addWidget(scroll)
 
+        # Trajectory overlay retention controls
+        overlay_layout = QHBoxLayout()
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_layout.setSpacing(6)
+
+        self.overlay_btn = QPushButton("Keep Previous Trajectories")
+        self.overlay_btn.setObjectName("KeepTrajectoriesButton")
+        self.overlay_btn.setCheckable(True)
+        self.overlay_btn.setIcon(get_overlay_icon(self.theme))
+        self.overlay_btn.setIconSize(QSize(13, 13))
+        self.overlay_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.overlay_btn.setToolTip(
+            "Retain previous simulation runs in background (Ctrl+K)"
+        )
+        self.overlay_btn.toggled.connect(self._on_overlay_btn_toggled)
+        overlay_layout.addWidget(self.overlay_btn, stretch=1)
+
+        self.clear_overlay_btn = QPushButton("Clear")
+        self.clear_overlay_btn.setObjectName("ClearOverlayButton")
+        self.clear_overlay_btn.setIcon(get_clear_icon(self.theme))
+        self.clear_overlay_btn.setIconSize(QSize(12, 12))
+        self.clear_overlay_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.clear_overlay_btn.setToolTip(
+            "Clear background trajectory overlays"
+        )
+        self.clear_overlay_btn.setEnabled(False)
+        self.clear_overlay_btn.clicked.connect(
+            self.clear_overlay_requested.emit
+        )
+        overlay_layout.addWidget(self.clear_overlay_btn)
+
+        main_layout.addLayout(overlay_layout)
+
         # Persistent Action Button at bottom
         self.run_btn = QPushButton("Run Simulation")
         self.run_btn.setObjectName("SimulateButton")
@@ -132,14 +180,62 @@ class ParameterPanel(QWidget):
         self.run_btn.setIconSize(QSize(13, 13))
         self.run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.run_btn.setToolTip("Run simulation (Shortcut: Enter)")
-        self.run_btn.clicked.connect(self.simulate_requested.emit)
+        self.run_btn.clicked.connect(self._on_run_clicked)
         main_layout.addWidget(self.run_btn)
+
+    def is_keep_trajectories_active(self) -> bool:
+        """Return True if overlay retention is currently active."""
+        return (
+            hasattr(self, "overlay_btn")
+            and self.overlay_btn.isChecked()
+        )
+
+    def set_keep_trajectories(self, enabled: bool) -> None:
+        """Update toggle button check state without causing cycles."""
+        if hasattr(self, "overlay_btn"):
+            if self.overlay_btn.isChecked() != bool(enabled):
+                self.overlay_btn.blockSignals(True)
+                self.overlay_btn.setChecked(bool(enabled))
+                self.overlay_btn.blockSignals(False)
+
+    def set_clear_enabled(self, enabled: bool) -> None:
+        """Update enabled state of the clear overlay button."""
+        if hasattr(self, "clear_overlay_btn"):
+            self.clear_overlay_btn.setEnabled(bool(enabled))
+
+    def _on_overlay_btn_toggled(self, checked: bool) -> None:
+        # Forward overlay toggle signal when user clicks toggle button.
+        self.overlay_toggled.emit(checked)
+
+    def _on_run_clicked(self) -> None:
+        # Stop debounce timer and trigger immediate simulation run.
+        if self._param_change_timer.isActive():
+            self._param_change_timer.stop()
+        self.simulate_requested.emit()
+
+    def _on_param_changed(self) -> None:
+        # Trigger debounced re-simulation when parameters change in overlay.
+        if self._suppress_auto_simulate:
+            return
+        if not self.is_keep_trajectories_active():
+            return
+        if self._param_change_timer.isActive():
+            self._param_change_timer.stop()
+        self._param_change_timer.start(120)
+
+    def _on_param_timer_timeout(self) -> None:
+        # Emit simulation request upon debounce timer expiry.
+        self.simulate_requested.emit()
 
     def set_theme(self, theme: str):
         """Update theme-dependent icons."""
         self.theme = theme
         if hasattr(self, "run_btn"):
             self.run_btn.setIcon(get_play_icon(self.theme))
+        if hasattr(self, "overlay_btn"):
+            self.overlay_btn.setIcon(get_overlay_icon(self.theme))
+        if hasattr(self, "clear_overlay_btn"):
+            self.clear_overlay_btn.setIcon(get_clear_icon(self.theme))
         if self.info_btn is not None:
             self.info_btn.set_theme(self.theme)
             if self.model:
@@ -485,6 +581,17 @@ class ParameterPanel(QWidget):
             self.t_start_spin.setSingleStep(1.0)
             self.t_end_spin.setSingleStep(1.0)
 
+        self.n1_init_spin.valueChanged.connect(self._on_param_changed)
+        if self.n2_init_spin is not None:
+            self.n2_init_spin.valueChanged.connect(self._on_param_changed)
+        if self.n3_init_spin is not None:
+            self.n3_init_spin.valueChanged.connect(self._on_param_changed)
+        if self.n4_init_spin is not None:
+            self.n4_init_spin.valueChanged.connect(self._on_param_changed)
+        self.t_start_spin.valueChanged.connect(self._on_param_changed)
+        self.t_end_spin.valueChanged.connect(self._on_param_changed)
+        self.points_spin.valueChanged.connect(self._on_param_changed)
+
         self.content_layout.addWidget(sim_group)
 
         # 5. Model Parameters
@@ -531,6 +638,8 @@ class ParameterPanel(QWidget):
             ):
                 spin.valueChanged.connect(self._update_relationship_badge)
 
+            spin.valueChanged.connect(self._on_param_changed)
+
             param_layout.addWidget(spin, row, 1)
             self._param_inputs[p_key] = spin
             row += 1
@@ -563,38 +672,45 @@ class ParameterPanel(QWidget):
         if not data:
             return
 
-        if "initial" in data:
-            init_vals = data["initial"]
-            self.n1_init_spin.setValue(int(round(init_vals[0])))
-            if len(init_vals) > 1 and self.n2_init_spin is not None:
-                self.n2_init_spin.setValue(int(round(init_vals[1])))
-            if (
-                len(init_vals) > 2
-                and getattr(self, "n3_init_spin", None) is not None
-            ):
-                self.n3_init_spin.setValue(int(round(init_vals[2])))
-            if (
-                len(init_vals) > 3
-                and getattr(self, "n4_init_spin", None) is not None
-            ):
-                self.n4_init_spin.setValue(int(round(init_vals[3])))
+        self._suppress_auto_simulate = True
+        try:
+            if "initial" in data:
+                init_vals = data["initial"]
+                self.n1_init_spin.setValue(int(round(init_vals[0])))
+                if len(init_vals) > 1 and self.n2_init_spin is not None:
+                    self.n2_init_spin.setValue(int(round(init_vals[1])))
+                if (
+                    len(init_vals) > 2
+                    and getattr(self, "n3_init_spin", None) is not None
+                ):
+                    self.n3_init_spin.setValue(int(round(init_vals[2])))
+                if (
+                    len(init_vals) > 3
+                    and getattr(self, "n4_init_spin", None) is not None
+                ):
+                    self.n4_init_spin.setValue(int(round(init_vals[3])))
 
-        if "t_span" in data:
-            t_span = data["t_span"]
-            self.t_start_spin.setValue(float(t_span[0]))
-            self.t_end_spin.setValue(float(t_span[1]))
+            if "t_span" in data:
+                t_span = data["t_span"]
+                self.t_start_spin.setValue(float(t_span[0]))
+                self.t_end_spin.setValue(float(t_span[1]))
 
-        params = data.get("params", {})
-        for k, v in params.items():
-            if k in self._param_inputs:
-                spin = self._param_inputs[k]
-                if isinstance(spin, QSpinBox):
-                    spin.setValue(int(round(v)))
-                else:
-                    spin.setValue(float(v))
+            params = data.get("params", {})
+            for k, v in params.items():
+                if k in self._param_inputs:
+                    spin = self._param_inputs[k]
+                    if isinstance(spin, QSpinBox):
+                        spin.setValue(int(round(v)))
+                    else:
+                        spin.setValue(float(v))
 
-        if isinstance(self.model, LotkaVolterraCompetitionModel):
-            self._update_relationship_badge()
+            if isinstance(self.model, LotkaVolterraCompetitionModel):
+                self._update_relationship_badge()
+        finally:
+            self._suppress_auto_simulate = False
+
+        if self._param_change_timer.isActive():
+            self._param_change_timer.stop()
 
         # Trigger automatic re-simulation
         self.simulate_requested.emit()

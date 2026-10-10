@@ -1842,6 +1842,138 @@ class TestGUIComponents(unittest.TestCase):
 
         window.close()
 
+    def test_overlay_mode_toggle_and_sync(self):
+        """Verify toggle button synchronization and shortcut handling."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        QApplication.processEvents()
+
+        # Both panel and canvas buttons exist with required label.
+        self.assertEqual(
+            window.param_panel.overlay_btn.text(),
+            "Keep Previous Trajectories",
+        )
+        self.assertEqual(
+            window.canvas_widget.overlay_btn.text(),
+            "Keep Previous Trajectories",
+        )
+        self.assertFalse(window.param_panel.overlay_btn.isChecked())
+        self.assertFalse(window.canvas_widget.overlay_btn.isChecked())
+        self.assertFalse(window.keep_traj_action.isChecked())
+
+        # Toggle via parameter panel button.
+        window.param_panel.overlay_btn.setChecked(True)
+        QApplication.processEvents()
+        self.assertTrue(window.canvas_widget.keep_previous)
+        self.assertTrue(window.canvas_widget.overlay_btn.isChecked())
+        self.assertTrue(window.keep_traj_action.isChecked())
+
+        # Toggle via canvas button.
+        window.canvas_widget.overlay_btn.setChecked(False)
+        QApplication.processEvents()
+        self.assertFalse(window.canvas_widget.keep_previous)
+        self.assertFalse(window.param_panel.overlay_btn.isChecked())
+        self.assertFalse(window.keep_traj_action.isChecked())
+
+        # Toggle via menu action.
+        window.keep_traj_action.trigger()
+        QApplication.processEvents()
+        self.assertTrue(window.canvas_widget.keep_previous)
+        self.assertTrue(window.param_panel.overlay_btn.isChecked())
+        self.assertTrue(window.canvas_widget.overlay_btn.isChecked())
+
+        window.close()
+
+    def test_overlay_trajectories_retention_and_clear(self):
+        """Verify past simulation runs remain rendered in background."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.models import LotkaVolterraCompetitionModel
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        model = LotkaVolterraCompetitionModel()
+        window._on_model_selected(model, "continuous")
+        QApplication.processEvents()
+
+        # Enable overlay mode.
+        window.canvas_widget.set_keep_previous(True)
+        self.assertEqual(len(window.canvas_widget._overlay_history), 0)
+        self.assertFalse(window.canvas_widget.clear_btn.isEnabled())
+        self.assertFalse(
+            window.param_panel.clear_overlay_btn.isEnabled()
+        )
+
+        # First run (already simulated by selection).
+        lines_before = len(window.canvas_widget.ax_time.lines)
+
+        # Tweak a parameter and simulate again.
+        window.param_panel._param_inputs["r1"].setValue(1.5)
+        window.run_simulation()
+        QApplication.processEvents()
+
+        self.assertEqual(len(window.canvas_widget._overlay_history), 1)
+        self.assertTrue(window.canvas_widget.clear_btn.isEnabled())
+        self.assertTrue(window.param_panel.clear_overlay_btn.isEnabled())
+        # Time axis now contains both active and overlay lines.
+        self.assertGreater(
+            len(window.canvas_widget.ax_time.lines), lines_before
+        )
+
+        # Tweak another parameter and simulate 3rd run.
+        window.param_panel._param_inputs["r1"].setValue(2.0)
+        window.run_simulation()
+        QApplication.processEvents()
+
+        self.assertEqual(len(window.canvas_widget._overlay_history), 2)
+
+        # Clear overlay history via clear button.
+        window.param_panel.clear_overlay_btn.click()
+        QApplication.processEvents()
+
+        self.assertEqual(len(window.canvas_widget._overlay_history), 0)
+        self.assertFalse(window.canvas_widget.clear_btn.isEnabled())
+        self.assertFalse(
+            window.param_panel.clear_overlay_btn.isEnabled()
+        )
+        self.assertEqual(
+            len(window.canvas_widget.ax_time.lines), lines_before
+        )
+
+        window.close()
+
+    def test_overlay_history_cleared_on_model_switch(self):
+        """Verify switching model automatically resets overlay history."""
+        from PyQt6.QtWidgets import QApplication
+        from bio_models.models import (
+            ClassicSIRModel,
+            LogisticGrowthModel,
+        )
+        from bio_models.ui.main_window import MainWindow
+
+        window = MainWindow()
+        window.canvas_widget.set_keep_previous(True)
+
+        m1 = LogisticGrowthModel()
+        window._on_model_selected(m1, "continuous")
+        window.param_panel._param_inputs["r"].setValue(1.2)
+        window.run_simulation()
+        QApplication.processEvents()
+
+        self.assertEqual(len(window.canvas_widget._overlay_history), 1)
+
+        # Switch to an epidemic model.
+        m2 = ClassicSIRModel()
+        window._on_model_selected(m2, "continuous")
+        QApplication.processEvents()
+
+        # Overlay history must be wiped to prevent dimension mismatch.
+        self.assertEqual(len(window.canvas_widget._overlay_history), 0)
+        self.assertFalse(window.canvas_widget.clear_btn.isEnabled())
+
+        window.close()
+
     def test_pep8_compliance(self):
         """Verify that all codebase files strictly adhere to PEP 8."""
         import subprocess
